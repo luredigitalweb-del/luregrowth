@@ -493,14 +493,14 @@ function CoursePage() {
                       <div
                         className={`truncate text-sm font-semibold ${isActive ? "text-primary" : ""}`}
                       >
-                        {l.title}
+                        {videos[l.n]?.title ?? l.title}
                       </div>
                       <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                         {isProva ? (
                           "Certificado de Conclusão"
                         ) : (
                           <>
-                            <Clock className="h-3 w-3" /> {l.duration}
+                            <Clock className="h-3 w-3" /> {fmtDur(videos[l.n]?.duration) ?? l.duration}
                             {hasVideo && <Youtube className="ml-1 h-3 w-3 text-red-500" />}
                           </>
                         )}

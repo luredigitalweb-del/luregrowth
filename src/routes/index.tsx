@@ -109,6 +109,14 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
         thumb: callAmanda.url,
       },
       {
+        title: "Call Anderson",
+        author: "Anderson",
+        lessons: 6,
+        progress: 0,
+        accent: "gold",
+        thumb: "/call-anderson.jpg",
+      },
+      {
         title: "Call Matheus",
         author: "Matheus",
         lessons: 6,
