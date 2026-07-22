@@ -68,8 +68,16 @@ function AdminPage() {
             <span className="text-sm font-semibold tracking-wider">Administração</span>
           </div>
         </div>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <ShieldCheck className="h-3.5 w-3.5" /> Admin
+        <div className="flex items-center gap-2">
+          <Link
+            to="/admin/modulos"
+            className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+          >
+            Módulos →
+          </Link>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            <ShieldCheck className="h-3.5 w-3.5" /> Admin
+          </div>
         </div>
       </header>
 

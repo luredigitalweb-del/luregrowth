@@ -392,9 +392,6 @@ function Portal() {
             </div>
             <div className="mx-auto max-w-[1400px] px-4 md:px-10">
               <DbModules />
-              {sections.map((s) => (
-                <SectionRow key={s.id} section={s} />
-              ))}
             </div>
           </main>
           {/* Mobile bottom tab bar */}
