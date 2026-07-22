@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   Play,
   CheckCircle2,
+  Circle,
   Lock,
   Award,
   MessageCircle,
@@ -16,12 +17,16 @@ import {
   Loader2,
   Trash2,
   X,
+  ListChecks,
+  LifeBuoy,
+  ArrowRight,
 } from "lucide-react";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { toYouTubeEmbed } from "@/lib/youtube";
 import { Avatar, initialsOf } from "@/components/avatar";
+import { openSettings } from "@/components/profile-settings-modal";
 import { LurePlayer } from "@/components/lure-player";
 
 export const Route = createFileRoute("/curso/$slug")({
@@ -86,9 +91,27 @@ function CoursePage() {
   const courseTitle = deslug(slug);
   const { session, profile, isAdmin } = useAuth();
   const [currentLesson, setCurrentLesson] = useState(1);
+  const [completed, setCompleted] = useState<Set<number>>(
+    () => new Set(lessons.filter((l) => l.done).map((l) => l.n)),
+  );
   const active = lessons.find((l) => l.n === currentLesson)!;
-  const doneCount = lessons.filter((l) => l.done).length;
+  const doneCount = completed.size;
   const progress = Math.round((doneCount / lessons.length) * 100);
+  const isCurrentDone = completed.has(active.n);
+  const nextLesson = lessons.find((l) => l.n > active.n && !l.locked);
+  const isLast = !nextLesson;
+
+  const toggleComplete = (n: number) =>
+    setCompleted((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+
+  const goNext = () => {
+    if (nextLesson) setCurrentLesson(nextLesson.n);
+  };
 
   // Vídeos (YouTube) por aula, vindos do banco
   const [videos, setVideos] = useState<Record<number, string>>({});
@@ -141,7 +164,11 @@ function CoursePage() {
             <span className="text-sm font-semibold tracking-wider">LURE Growth</span>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <button
+          onClick={openSettings}
+          title="Editar perfil"
+          className="flex items-center gap-3 rounded-full py-1 pl-3 pr-1 text-xs text-muted-foreground transition hover:bg-surface"
+        >
           <span className="hidden md:inline">
             {profile?.full_name || profile?.email?.split("@")[0] || "Aluno LURE"} ·{" "}
             {isAdmin ? "Admin" : "Membro"}
@@ -153,7 +180,7 @@ function CoursePage() {
             className="h-8 w-8"
             textClassName="text-[11px]"
           />
-        </div>
+        </button>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px]">
@@ -169,29 +196,71 @@ function CoursePage() {
 
           {/* Lesson info */}
           <div className="border-b border-border px-6 py-8 md:px-10">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+              <span className="h-1 w-6 rounded-full bg-primary" />
               {courseTitle}
             </div>
-            <h1 className="mt-2 font-display text-3xl font-bold leading-tight md:text-4xl">
+            <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:text-4xl">
               Aula {active.n}: {active.title}
             </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
+
+            {/* Meta chips */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" /> {active.duration}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
+                <Play className="h-3 w-3 fill-current" /> Aula {active.n} de {lessons.length}
+              </span>
+              {isCurrentDone && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Concluída
+                </span>
+              )}
+            </div>
+
+            <p className="mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
               Aprenda como transformar suas redes sociais em uma máquina previsível de vendas de
               alto ticket. Nesta aula, vamos desconstruir o processo exato que os maiores players do
               mercado utilizam para atrair, engajar e converter desconhecidos em clientes fiéis.
             </p>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            {/* Ações principais */}
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <button
-                onClick={() => setCurrentLesson((n) => Math.min(n + 1, lessons.length))}
-                className="inline-flex items-center gap-2 rounded-xl gradient-gold px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:brightness-110"
+                onClick={() => toggleComplete(active.n)}
+                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition ${
+                  isCurrentDone
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15"
+                    : "border-border bg-surface hover:bg-muted"
+                }`}
               >
-                Próxima Aula →
+                {isCurrentDone ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" /> Concluída
+                  </>
+                ) : (
+                  <>
+                    <Circle className="h-4 w-4" /> Marcar como concluída
+                  </>
+                )}
               </button>
-              <button className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-3 text-sm font-medium transition hover:bg-muted">
+              {!isLast && (
+                <button
+                  onClick={goNext}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl gradient-gold px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:brightness-110"
+                >
+                  Próxima aula <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Materiais */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground hover:bg-muted">
                 <FileText className="h-4 w-4" /> Material da aula
               </button>
-              <button className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-3 text-sm font-medium transition hover:bg-muted">
+              <button className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground hover:bg-muted">
                 <Download className="h-4 w-4" /> Baixar recursos
               </button>
             </div>
@@ -207,44 +276,77 @@ function CoursePage() {
         </main>
 
         {/* Lessons sidebar */}
-        <aside className="border-l border-border bg-surface/40 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto">
-          <div className="border-b border-border p-6">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              {courseTitle}
+        <aside className="flex flex-col border-t border-border bg-surface/40 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:border-l lg:border-t-0">
+          {/* Header do painel */}
+          <div className="shrink-0 border-b border-border p-6">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <ListChecks className="h-3.5 w-3.5" /> Conteúdo do curso
             </div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              {doneCount} de {lessons.length} etapas concluídas · {progress}%
-            </div>
-            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-background">
-              <div
-                className="h-full gradient-gold transition-all"
-                style={{ width: `${progress}%` }}
-              />
+            <h2 className="mt-2 font-display text-lg font-bold leading-tight">{courseTitle}</h2>
+
+            <div className="mt-4 flex items-center gap-3">
+              {/* Anel de progresso */}
+              <div className="relative grid h-12 w-12 shrink-0 place-items-center">
+                <svg viewBox="0 0 36 36" className="h-12 w-12 -rotate-90">
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="15.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    className="text-border"
+                  />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="15.5"
+                    fill="none"
+                    stroke="oklch(0.78 0.14 70)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(progress / 100) * 97.4} 97.4`}
+                    className="transition-all duration-500"
+                  />
+                </svg>
+                <span className="absolute text-[11px] font-bold">{progress}%</span>
+              </div>
+              <div className="text-sm">
+                <div className="font-semibold">
+                  {doneCount} de {lessons.length} concluídas
+                </div>
+                <div className="text-xs text-muted-foreground">Continue de onde parou</div>
+              </div>
             </div>
           </div>
 
-          <ul className="p-3">
+          {/* Lista de aulas */}
+          <ul className="flex-1 space-y-1 overflow-y-auto p-3">
             {lessons.map((l) => {
               const isActive = l.n === currentLesson;
               const isProva = l.kind === "prova";
+              const isDone = completed.has(l.n);
               const hasVideo = !!videos[l.n];
               return (
                 <li key={l.n}>
                   <button
                     onClick={() => !l.locked && setCurrentLesson(l.n)}
                     disabled={l.locked}
-                    className={`group flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
+                    className={`group relative flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
                       isActive
-                        ? "border-primary/40 bg-primary/10"
+                        ? "border-primary/40 bg-primary/10 shadow-[var(--shadow-glow)]"
                         : "border-transparent hover:border-border hover:bg-background"
-                    } ${l.locked ? "opacity-60" : ""}`}
+                    } ${l.locked ? "cursor-not-allowed opacity-60" : ""}`}
                   >
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+                    )}
                     <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
                         isProva
                           ? "bg-[oklch(0.62_0.19_255)]/20 text-[oklch(0.75_0.15_255)]"
-                          : l.done
-                            ? "bg-[oklch(0.68_0.15_155)]/15 text-[oklch(0.78_0.15_155)]"
+                          : isDone
+                            ? "bg-emerald-500/15 text-emerald-400"
                             : isActive
                               ? "gradient-gold text-primary-foreground"
                               : "bg-background text-muted-foreground"
@@ -254,17 +356,19 @@ function CoursePage() {
                         <Award className="h-5 w-5" />
                       ) : l.locked ? (
                         <Lock className="h-4 w-4" />
-                      ) : l.done ? (
+                      ) : isDone ? (
                         <CheckCircle2 className="h-5 w-5" />
-                      ) : (
+                      ) : isActive ? (
                         <Play className="h-4 w-4 fill-current" />
+                      ) : (
+                        l.n
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div
                         className={`truncate text-sm font-semibold ${isActive ? "text-primary" : ""}`}
                       >
-                        {l.n}. {l.title}
+                        {l.title}
                       </div>
                       <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                         {isProva ? (
@@ -282,6 +386,25 @@ function CoursePage() {
               );
             })}
           </ul>
+
+          {/* Rodapé — suporte */}
+          <div className="shrink-0 border-t border-border p-4">
+            <a
+              href="https://wa.me/5585991112424?text=Ol%C3%A1%2C%20estou%20assistindo%20uma%20aula%20e%20preciso%20de%20ajuda"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-xl border border-border bg-background/60 p-3 transition hover:border-primary/40"
+            >
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+                <LifeBuoy className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold">Precisa de ajuda?</div>
+                <div className="text-xs text-muted-foreground">Fale com o suporte LURE</div>
+              </div>
+              <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
+            </a>
+          </div>
         </aside>
       </div>
     </div>
