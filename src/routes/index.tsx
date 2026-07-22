@@ -1222,15 +1222,22 @@ function ModuleCard({ m }: { m: Module }) {
       )}
       {!m.thumb && (
         <>
-          {/* Bottom-center glow */}
+          {/* Sem foto: logo da LURE em fundo preto */}
+          <div className="pointer-events-none absolute inset-0 bg-black" />
+          <div className="pointer-events-none absolute inset-0 grid place-items-center">
+            <img
+              src={lureLogo.url}
+              alt="LURE"
+              className="h-20 w-20 object-contain opacity-90 transition duration-500 group-hover:scale-105"
+            />
+          </div>
+          {/* Brilho sutil embaixo pra dar profundidade */}
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
             style={{
               background: `radial-gradient(ellipse 70% 90% at 50% 100%, ${glow}, transparent 70%)`,
             }}
           />
-          {/* Top sheen */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.04] to-transparent" />
         </>
       )}
 
