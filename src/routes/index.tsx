@@ -203,6 +203,7 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
         lessons: 5,
         progress: 0,
         accent: "blue",
+        thumb: "/rh-onboarding.jpg",
       },
       {
         title: "Cultura Data-Driven",
