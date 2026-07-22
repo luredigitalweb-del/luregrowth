@@ -165,6 +165,7 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
         progress: 72,
         tag: "NOVO",
         accent: "gold",
+        thumb: "/prospeccao-linkedin.jpg",
       },
       {
         title: "Perfil Magnético B2B",
