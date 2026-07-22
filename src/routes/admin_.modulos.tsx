@@ -18,7 +18,7 @@ export const Route = createFileRoute("/admin_/modulos")({
 });
 
 function ModulesAdminPage() {
-  const { session } = useAuth();
+  const { session, isAdmin } = useAuth();
   const [modules, setModules] = useState<ModuleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ModuleRow | null>(null);
@@ -84,6 +84,7 @@ function ModulesAdminPage() {
               key={editing?.id ?? "new"}
               editing={editing}
               userId={session?.user?.id}
+              isAdmin={isAdmin}
               onCancel={() => setEditing(null)}
               onSaved={() => {
                 setEditing(null);
@@ -186,10 +187,11 @@ function ModuleRowItem({ m, onEdit, onChanged }: { m: ModuleRow; onEdit: () => v
 }
 
 function ModuleForm({
-  editing, userId, onSaved, onCancel,
+  editing, userId, isAdmin, onSaved, onCancel,
 }: {
   editing: ModuleRow | null;
   userId?: string;
+  isAdmin: boolean;
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -267,11 +269,21 @@ function ModuleForm({
     if (cover && moduleId) {
       try {
         const url = await uploadCover(cover, moduleId);
-        await supabase.from("modules").update({ cover_url: url }).eq("id", moduleId);
-      } catch {
+        const { error: coverErr } = await supabase
+          .from("modules")
+          .update({ cover_url: url })
+          .eq("id", moduleId);
+        if (coverErr) throw coverErr;
+      } catch (err: unknown) {
         setSaving(false);
-        setMsg({ type: "ok", text: "Módulo salvo, mas a capa não subiu. Tente de novo depois." });
-        onSaved();
+        const detail = err instanceof Error ? err.message : String(err);
+        setMsg({
+          type: "err",
+          text: !isAdmin
+            ? "A capa não subiu: só administradores podem enviar imagens. Entre com uma conta admin."
+            : `A capa não subiu: ${detail}`,
+        });
+        // Não chama onSaved() para o admin poder tentar de novo sem perder o formulário.
         return;
       }
     }
@@ -303,6 +315,11 @@ function ModuleForm({
         {/* Capa */}
         <div>
           <label className="mb-1.5 block text-sm font-medium">Capa (opcional)</label>
+          {!isAdmin && (
+            <p className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-400">
+              Você não está logado como administrador — o envio de imagens ficará bloqueado pelo servidor.
+            </p>
+          )}
           <div className="flex items-center gap-3">
             <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-lg border border-border bg-gradient-to-br from-[#0B152D] to-black">
               {preview ? (
