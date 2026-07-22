@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, RotateCcw, Loader2 } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Minimize,
+  RotateCcw,
+  Loader2,
+} from "lucide-react";
 import { parseYouTubeId } from "@/lib/youtube";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -263,18 +272,18 @@ export function LurePlayer({
       onMouseMove={poke}
       onMouseLeave={() => playing && setShowUi(false)}
     >
-      {/* Host do YouTube (iframe injetado aqui). pointer-events off = nenhum clique chega no YT.
-          O iframe é ampliado (overscan) e o container corta as bordas — assim o título do YouTube
-          (topo) e o botão "Assistir no YouTube" (canto) ficam fora da área visível. */}
+      {/* Host do YouTube (iframe injetado aqui). pointer-events off = nenhum clique/hover
+          chega no YT, então a barra de título e o botão "Assistir no YouTube" (que só
+          aparecem no hover) nunca surgem. O vídeo ocupa 100% — sem zoom. */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
           ref={hostRef}
-          className="absolute left-1/2 top-1/2 h-[130%] w-[130%] -translate-x-1/2 -translate-y-1/2 [&>iframe]:h-full [&>iframe]:w-full"
+          className="absolute left-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 [&>iframe]:h-full [&>iframe]:w-full"
         />
       </div>
 
-      {/* Máscara superior — esconde qualquer lampejo de título do YouTube */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-black/50 to-transparent" />
+      {/* Máscara superior — esconde o lampejo de título do YouTube no início do vídeo */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-black/75 via-black/30 to-transparent" />
 
       {/* Escudo de clique: bloqueia hover/click do YT e faz play/pause */}
       <button
@@ -338,13 +347,27 @@ export function LurePlayer({
 
         {/* Botões */}
         <div className="mt-1 flex items-center gap-3 text-white">
-          <button type="button" onClick={togglePlay} aria-label={playing ? "Pausar" : "Reproduzir"} className="transition hover:text-primary">
+          <button
+            type="button"
+            onClick={togglePlay}
+            aria-label={playing ? "Pausar" : "Reproduzir"}
+            className="transition hover:text-primary"
+          >
             {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </button>
 
           <div className="flex items-center gap-2">
-            <button type="button" onClick={toggleMute} aria-label="Mudo" className="transition hover:text-primary">
-              {muted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            <button
+              type="button"
+              onClick={toggleMute}
+              aria-label="Mudo"
+              className="transition hover:text-primary"
+            >
+              {muted || volume === 0 ? (
+                <VolumeX className="h-5 w-5" />
+              ) : (
+                <Volume2 className="h-5 w-5" />
+              )}
             </button>
             <input
               type="range"
@@ -365,7 +388,12 @@ export function LurePlayer({
             <span className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40 sm:inline">
               LURE Player
             </span>
-            <button type="button" onClick={toggleFullscreen} aria-label="Tela cheia" className="transition hover:text-primary">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              aria-label="Tela cheia"
+              className="transition hover:text-primary"
+            >
               {isFs ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
             </button>
           </div>

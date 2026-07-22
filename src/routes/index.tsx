@@ -27,7 +27,6 @@ import {
 import { useAuth } from "@/lib/auth";
 import { Avatar, initialsOf } from "@/components/avatar";
 import { openSettings } from "@/components/profile-settings-modal";
-import { DbModules } from "@/components/db-modules";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
 import lureTeam from "@/assets/lure-team.jpg.asset.json";
 import callAmanda from "@/assets/call-vendas-1.png.asset.json";
@@ -55,6 +54,8 @@ export type Module = {
   tag?: string;
   accent?: "gold" | "blue" | "green" | "none";
   thumb?: string;
+  /** Se presente, o card abre a página de módulo do banco (aulas + vídeos editáveis). */
+  moduleId?: string;
 };
 
 export const sections: { id: string; title: string; subtitle: string; modules: Module[] }[] = [
@@ -147,6 +148,16 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
     title: "SOCIAL SELLING",
     subtitle: "Prospecção e autoridade nas redes",
     modules: [
+      {
+        title: "Social Selling com Julia",
+        author: "Julia Farias",
+        lessons: 2,
+        progress: 0,
+        tag: "NOVO",
+        accent: "gold",
+        thumb: "/julia-social.jpg",
+        moduleId: "ebdc9d1a-4369-4ffc-96f0-016ba3f78a85",
+      },
       {
         title: "Prospecção no LinkedIn",
         author: "Julia Farias",
@@ -399,12 +410,10 @@ function Portal() {
               <HeroBanner />
             </div>
             <div className="mx-auto max-w-[1400px] px-4 md:px-10">
-              {/* Catálogo fixo (com as fotos das calls de vendas) — restaurado */}
+              {/* Catálogo único da home (com as fotos das calls de vendas) */}
               {sections.map((s) => (
                 <SectionRow key={s.id} section={s} />
               ))}
-              {/* Catálogo vindo do banco (módulos gerenciados pelo admin) */}
-              <DbModules />
             </div>
           </main>
           {/* Mobile bottom tab bar */}
@@ -1182,12 +1191,16 @@ function ModuleCard({ m }: { m: Module }) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-  const emGravacao = m.progress === 0;
+  // Módulo do banco (com aulas/vídeos reais) nunca fica "em gravação".
+  const emGravacao = m.progress === 0 && !m.moduleId;
+
+  const linkProps = m.moduleId
+    ? ({ to: "/modulo/$id", params: { id: m.moduleId } } as const)
+    : ({ to: "/curso/$slug", params: { slug } } as const);
 
   return (
     <Link
-      to="/curso/$slug"
-      params={{ slug }}
+      {...linkProps}
       onClick={(e) => {
         if (emGravacao) e.preventDefault();
       }}
