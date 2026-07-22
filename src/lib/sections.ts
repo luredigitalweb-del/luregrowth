@@ -4,8 +4,8 @@ import { supabase } from "./supabase";
 export const SECTIONS: { id: string; title: string; subtitle: string }[] = [
   { id: "intro", title: "INTRODUÇÃO", subtitle: "Comece por aqui — a base do ecossistema LURE" },
   { id: "call", title: "CALL DE VENDAS", subtitle: "Do primeiro contato ao fechamento" },
-  { id: "comercial", title: "COMERCIAL", subtitle: "Processos, funil e conversão de alto ticket" },
   { id: "social", title: "SOCIAL SELLING", subtitle: "Prospecção e autoridade nas redes" },
+  { id: "comercial", title: "COMERCIAL", subtitle: "Processos, funil e conversão de alto ticket" },
   { id: "marketing", title: "MARKETING", subtitle: "Estratégia, marca e posicionamento" },
   { id: "trafego", title: "GESTÃO DE TRÁFEGO", subtitle: "Meta, Google e mensuração em escala" },
   { id: "ia", title: "IA APLICADA", subtitle: "Inteligência artificial no dia a dia de marketing" },

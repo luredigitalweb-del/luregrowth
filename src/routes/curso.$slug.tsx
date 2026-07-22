@@ -183,7 +183,7 @@ function CoursePage() {
         </button>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px]">
+      <div className="mx-auto grid w-full max-w-[1500px] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
         {/* Player + info */}
         <main className="min-w-0">
           <VideoPlayer
@@ -195,41 +195,41 @@ function CoursePage() {
           />
 
           {/* Lesson info */}
-          <div className="border-b border-border px-6 py-8 md:px-10">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-              <span className="h-1 w-6 rounded-full bg-primary" />
+          <div className="border-b border-border px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+              <span className="h-1 w-5 rounded-full bg-primary" />
               {courseTitle}
             </div>
-            <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:text-4xl">
+            <h1 className="mt-2.5 font-display text-xl font-bold leading-tight sm:text-2xl lg:text-3xl">
               Aula {active.n}: {active.title}
             </h1>
 
             {/* Meta chips */}
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 <Clock className="h-3.5 w-3.5" /> {active.duration}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 <Play className="h-3 w-3 fill-current" /> Aula {active.n} de {lessons.length}
               </span>
               {isCurrentDone && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-400">
                   <CheckCircle2 className="h-3.5 w-3.5" /> Concluída
                 </span>
               )}
             </div>
 
-            <p className="mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               Aprenda como transformar suas redes sociais em uma máquina previsível de vendas de
               alto ticket. Nesta aula, vamos desconstruir o processo exato que os maiores players do
               mercado utilizam para atrair, engajar e converter desconhecidos em clientes fiéis.
             </p>
 
             {/* Ações principais */}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="mt-5 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
               <button
                 onClick={() => toggleComplete(active.n)}
-                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition ${
+                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
                   isCurrentDone
                     ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15"
                     : "border-border bg-surface hover:bg-muted"
@@ -248,7 +248,7 @@ function CoursePage() {
               {!isLast && (
                 <button
                   onClick={goNext}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl gradient-gold px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:brightness-110"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl gradient-gold px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:brightness-110"
                 >
                   Próxima aula <ArrowRight className="h-4 w-4" />
                 </button>
@@ -256,11 +256,11 @@ function CoursePage() {
             </div>
 
             {/* Materiais */}
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <button className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground hover:bg-muted">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground">
                 <FileText className="h-4 w-4" /> Material da aula
               </button>
-              <button className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground hover:bg-muted">
+              <button className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground">
                 <Download className="h-4 w-4" /> Baixar recursos
               </button>
             </div>
@@ -278,16 +278,16 @@ function CoursePage() {
         {/* Lessons sidebar */}
         <aside className="flex flex-col border-t border-border bg-surface/40 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:border-l lg:border-t-0">
           {/* Header do painel */}
-          <div className="shrink-0 border-b border-border p-6">
+          <div className="shrink-0 border-b border-border p-4 lg:p-5">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               <ListChecks className="h-3.5 w-3.5" /> Conteúdo do curso
             </div>
-            <h2 className="mt-2 font-display text-lg font-bold leading-tight">{courseTitle}</h2>
+            <h2 className="mt-2 font-display text-base font-bold leading-tight">{courseTitle}</h2>
 
-            <div className="mt-4 flex items-center gap-3">
+            <div className="mt-3.5 flex items-center gap-3">
               {/* Anel de progresso */}
-              <div className="relative grid h-12 w-12 shrink-0 place-items-center">
-                <svg viewBox="0 0 36 36" className="h-12 w-12 -rotate-90">
+              <div className="relative grid h-11 w-11 shrink-0 place-items-center">
+                <svg viewBox="0 0 36 36" className="h-11 w-11 -rotate-90">
                   <circle
                     cx="18"
                     cy="18"
@@ -321,7 +321,7 @@ function CoursePage() {
           </div>
 
           {/* Lista de aulas */}
-          <ul className="flex-1 space-y-1 overflow-y-auto p-3">
+          <ul className="flex-1 space-y-1 overflow-y-auto p-2.5">
             {lessons.map((l) => {
               const isActive = l.n === currentLesson;
               const isProva = l.kind === "prova";
@@ -332,7 +332,7 @@ function CoursePage() {
                   <button
                     onClick={() => !l.locked && setCurrentLesson(l.n)}
                     disabled={l.locked}
-                    className={`group relative flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
+                    className={`group relative flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition ${
                       isActive
                         ? "border-primary/40 bg-primary/10 shadow-[var(--shadow-glow)]"
                         : "border-transparent hover:border-border hover:bg-background"
@@ -342,7 +342,7 @@ function CoursePage() {
                       <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
                     )}
                     <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
                         isProva
                           ? "bg-[oklch(0.62_0.19_255)]/20 text-[oklch(0.75_0.15_255)]"
                           : isDone
@@ -452,7 +452,8 @@ function VideoPlayer({
   };
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden bg-black">
+    <div className="flex w-full justify-center bg-black">
+    <div className="relative aspect-video max-h-[calc(100vh-4rem)] w-full max-w-[calc((100vh-4rem)*16/9)] overflow-hidden">
       {embed && !editing ? (
         <LurePlayer videoUrl={url!} className="absolute inset-0 h-full w-full" />
       ) : (
@@ -521,19 +522,20 @@ function VideoPlayer({
       {/* Badge + editar (admin) sobre o vídeo */}
       {embed && !editing && (
         <>
-          <div className="pointer-events-none absolute left-6 top-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white/80 backdrop-blur">
+          <div className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white/80 backdrop-blur">
             Aula {lessonN} · {duration}
           </div>
           {isAdmin && (
             <button
               onClick={() => setEditing(true)}
-              className="absolute right-6 top-6 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/60 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur transition hover:bg-black/80"
+              className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/60 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur transition hover:bg-black/80"
             >
               <Pencil className="h-3.5 w-3.5" /> Trocar vídeo
             </button>
           )}
         </>
       )}
+    </div>
     </div>
   );
 }
@@ -595,8 +597,8 @@ function CommentsSection({
   };
 
   return (
-    <section className="px-6 py-10 md:px-10">
-      <h2 className="font-display text-xl font-bold">
+    <section className="px-4 py-6 sm:px-6 lg:px-8">
+      <h2 className="font-display text-lg font-bold">
         Comentários {loading ? "" : `(${comments.length})`}
       </h2>
 

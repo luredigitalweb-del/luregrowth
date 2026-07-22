@@ -135,6 +135,36 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
     ],
   },
   {
+    id: "social",
+    title: "SOCIAL SELLING",
+    subtitle: "Prospecção e autoridade nas redes",
+    modules: [
+      {
+        title: "Prospecção no LinkedIn",
+        author: "Julia Farias",
+        lessons: 10,
+        progress: 72,
+        tag: "NOVO",
+        accent: "gold",
+      },
+      {
+        title: "Perfil Magnético B2B",
+        author: "Julia Farias",
+        lessons: 6,
+        progress: 35,
+        accent: "blue",
+      },
+      { title: "Copy para DMs", author: "Time LURE", lessons: 5, progress: 0, accent: "none" },
+      {
+        title: "Autoridade em Nicho",
+        author: "Julia Farias",
+        lessons: 8,
+        progress: 15,
+        accent: "green",
+      },
+    ],
+  },
+  {
     id: "comercial",
     title: "COMERCIAL",
     subtitle: "Processos, funil e conversão de alto ticket",
@@ -166,36 +196,6 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
         author: "Time LURE",
         lessons: 7,
         progress: 45,
-        accent: "green",
-      },
-    ],
-  },
-  {
-    id: "social",
-    title: "SOCIAL SELLING",
-    subtitle: "Prospecção e autoridade nas redes",
-    modules: [
-      {
-        title: "Prospecção no LinkedIn",
-        author: "Julia Farias",
-        lessons: 10,
-        progress: 72,
-        tag: "NOVO",
-        accent: "gold",
-      },
-      {
-        title: "Perfil Magnético B2B",
-        author: "Julia Farias",
-        lessons: 6,
-        progress: 35,
-        accent: "blue",
-      },
-      { title: "Copy para DMs", author: "Time LURE", lessons: 5, progress: 0, accent: "none" },
-      {
-        title: "Autoridade em Nicho",
-        author: "Julia Farias",
-        lessons: 8,
-        progress: 15,
         accent: "green",
       },
     ],
@@ -391,6 +391,11 @@ function Portal() {
               <HeroBanner />
             </div>
             <div className="mx-auto max-w-[1400px] px-4 md:px-10">
+              {/* Catálogo fixo (com as fotos das calls de vendas) — restaurado */}
+              {sections.map((s) => (
+                <SectionRow key={s.id} section={s} />
+              ))}
+              {/* Catálogo vindo do banco (módulos gerenciados pelo admin) */}
               <DbModules />
             </div>
           </main>
