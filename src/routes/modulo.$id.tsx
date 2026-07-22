@@ -368,31 +368,48 @@ function EditableAuthor({ value, editMode, onSave }: { value: string | null; edi
 
 function CoverButton({ mod, onSaved }: { mod: ModuleRow; onSaved: (url: string) => void }) {
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const ref = useRef<HTMLInputElement>(null);
 
   const pick = async (f: File | null) => {
     if (!f) return;
     const err = validateImageFile(f);
-    if (err) return;
+    if (err) return setStatus({ type: "err", text: err });
     setBusy(true);
+    setStatus(null);
     try {
       const url = await uploadCover(f, mod.id);
       onSaved(url);
+      setStatus({ type: "ok", text: "Foto salva!" });
+    } catch (e: unknown) {
+      setStatus({ type: "err", text: `Não salvou: ${e instanceof Error ? e.message : String(e)}` });
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <button
-      type="button"
-      onClick={() => ref.current?.click()}
-      className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-primary/20"
-    >
-      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
-      {mod.cover_url ? "Trocar foto" : "Adicionar foto"}
-      <input ref={ref} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
-    </button>
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-primary/20"
+      >
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+        {busy ? "Salvando…" : mod.cover_url ? "Trocar foto" : "Adicionar foto"}
+        <input ref={ref} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
+      </button>
+      {status && (
+        <span
+          className={`inline-flex items-center gap-1 text-xs font-medium ${
+            status.type === "ok" ? "text-emerald-400" : "text-red-400"
+          }`}
+        >
+          {status.type === "ok" && <Check className="h-3.5 w-3.5" />}
+          {status.text}
+        </span>
+      )}
+    </div>
   );
 }
 

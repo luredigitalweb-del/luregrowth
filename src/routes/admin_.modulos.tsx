@@ -356,6 +356,11 @@ function ModuleForm({
               onChange={(e) => pickCover(e.target.files?.[0] ?? null)}
             />
           </div>
+          {cover && (
+            <p className="mt-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-[11px] font-medium text-primary">
+              Imagem escolhida. Clique em <b>“{isEdit ? "Salvar alterações" : "Adicionar módulo"}”</b> abaixo para gravar.
+            </p>
+          )}
         </div>
 
         <Field label="Seção">
