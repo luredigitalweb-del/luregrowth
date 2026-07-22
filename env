@@ -1,0 +1,21 @@
+
+EXPO_PUBLIC_SUPABASE_URL=https://dfrmgjjxpvesyyfxozam.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmcm1namp4cHZlc3l5ZnhvemFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NTQ5ODQsImV4cCI6MjA5MTIzMDk4NH0.xPQVEsiTV1pfLRnjgC_ksSBEyQkVFcgWOjn0du7k3xY
+# ATENCAO: service_role NUNCA deve ter prefixo EXPO_PUBLIC_ — ficaria exposta no bundle.
+# Use apenas em scripts server-side ou Edge Functions.
+# SUPABASE_SERVICE_ROLE_KEY=<configure apenas no servidor>
+
+# Consulta de placa — mock para desenvolvimento (remova ao conectar API real)
+EXPO_PUBLIC_PLATE_API_MOCK=true
+# EXPO_PUBLIC_PLATE_API_URL=https://wdapi2.com.br/consulta
+# EXPO_PUBLIC_PLATE_API_TOKEN=seu_token_aqui
+
+# OpenAI — consulta técnica de veículos (óleo e fiação)
+# OpenAI — chave fica na Edge Function (chatbot-proxy), nunca no client.
+# Configure via: supabase secrets set OPENAI_API_KEY=sk-...
+EXPO_PUBLIC_OPENAI_MOCK=false
+
+# Link público de acompanhamento da OS (cliente final)
+# Formato final: <base>/<public_token>
+# Domínio de produção do web build no Vercel.
+EXPO_PUBLIC_PUBLIC_LINK_BASE=https://auto-lure.vercel.app/p

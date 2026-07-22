@@ -1,0 +1,336 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, RotateCcw, Loader2 } from "lucide-react";
+import { parseYouTubeId } from "@/lib/youtube";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** Carrega a API do YouTube uma única vez (singleton). */
+let ytApiPromise: Promise<void> | null = null;
+function loadYouTubeApi(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if ((window as any).YT?.Player) return Promise.resolve();
+  if (ytApiPromise) return ytApiPromise;
+  ytApiPromise = new Promise<void>((resolve) => {
+    const prev = (window as any).onYouTubeIframeAPIReady;
+    (window as any).onYouTubeIframeAPIReady = () => {
+      prev?.();
+      resolve();
+    };
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  });
+  return ytApiPromise;
+}
+
+function fmt(sec: number): string {
+  if (!isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Player de vídeo da LURE. Reproduz um vídeo do YouTube SEM a aparência do
+ * YouTube: controles próprios, sem logo/título/relacionados, e uma camada que
+ * intercepta cliques/hover para o cliente nunca ir parar no YouTube.
+ */
+export function LurePlayer({
+  videoUrl,
+  className = "",
+  onEnded,
+}: {
+  videoUrl: string;
+  className?: string;
+  onEnded?: () => void;
+}) {
+  const id = parseYouTubeId(videoUrl);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<any>(null);
+  const endedCb = useRef(onEnded);
+  endedCb.current = onEnded;
+
+  const [ready, setReady] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [ended, setEnded] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [current, setCurrent] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(100);
+  const [isFs, setIsFs] = useState(false);
+  const [showUi, setShowUi] = useState(true);
+  const hideTimer = useRef<number | undefined>(undefined);
+
+  // Inicializa o player quando a API e o id estiverem prontos.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setReady(false);
+    setPlaying(false);
+    setEnded(false);
+    setCurrent(0);
+
+    loadYouTubeApi().then(() => {
+      if (cancelled || !hostRef.current) return;
+      const YT = (window as any).YT;
+      playerRef.current = new YT.Player(hostRef.current, {
+        videoId: id,
+        host: "https://www.youtube-nocookie.com",
+        playerVars: {
+          controls: 0,
+          modestbranding: 1,
+          rel: 0,
+          iv_load_policy: 3,
+          disablekb: 1,
+          fs: 0,
+          playsinline: 1,
+          cc_load_policy: 0,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: (e: any) => {
+            if (cancelled) return;
+            setReady(true);
+            setDuration(e.target.getDuration?.() || 0);
+            setVolume(e.target.getVolume?.() ?? 100);
+            setMuted(e.target.isMuted?.() ?? false);
+          },
+          onStateChange: (e: any) => {
+            const S = (window as any).YT.PlayerState;
+            if (e.data === S.PLAYING) {
+              setPlaying(true);
+              setEnded(false);
+              setDuration(e.target.getDuration?.() || 0);
+            } else if (e.data === S.PAUSED) {
+              setPlaying(false);
+            } else if (e.data === S.ENDED) {
+              setPlaying(false);
+              setEnded(true);
+              endedCb.current?.();
+            }
+          },
+        },
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      try {
+        playerRef.current?.destroy?.();
+      } catch {
+        /* noop */
+      }
+      playerRef.current = null;
+    };
+  }, [id]);
+
+  // Atualiza o tempo enquanto toca.
+  useEffect(() => {
+    if (!playing) return;
+    const iv = window.setInterval(() => {
+      const p = playerRef.current;
+      if (p?.getCurrentTime) {
+        setCurrent(p.getCurrentTime() || 0);
+        const d = p.getDuration?.() || 0;
+        if (d) setDuration((prev) => (Math.abs(prev - d) > 0.5 ? d : prev));
+      }
+    }, 250);
+    return () => window.clearInterval(iv);
+  }, [playing]);
+
+  // Sincroniza estado de tela cheia.
+  useEffect(() => {
+    const onFs = () => setIsFs(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (ended) {
+      p.seekTo(0, true);
+      p.playVideo();
+      setEnded(false);
+      return;
+    }
+    if (playing) p.pauseVideo();
+    else p.playVideo();
+  }, [playing, ended]);
+
+  const seekTo = (clientX: number, el: HTMLElement) => {
+    const p = playerRef.current;
+    if (!p || !duration) return;
+    const rect = el.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const t = ratio * duration;
+    p.seekTo(t, true);
+    setCurrent(t);
+  };
+
+  const toggleMute = () => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (muted || volume === 0) {
+      p.unMute();
+      const v = volume === 0 ? 60 : volume;
+      p.setVolume(v);
+      setVolume(v);
+      setMuted(false);
+    } else {
+      p.mute();
+      setMuted(true);
+    }
+  };
+
+  const changeVolume = (v: number) => {
+    const p = playerRef.current;
+    if (!p) return;
+    p.setVolume(v);
+    if (v === 0) {
+      p.mute();
+      setMuted(true);
+    } else {
+      p.unMute();
+      setMuted(false);
+    }
+    setVolume(v);
+  };
+
+  const toggleFullscreen = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else el.requestFullscreen?.();
+  };
+
+  const poke = useCallback(() => {
+    setShowUi(true);
+    window.clearTimeout(hideTimer.current);
+    if (playing) hideTimer.current = window.setTimeout(() => setShowUi(false), 2600);
+  }, [playing]);
+
+  if (!id) {
+    return (
+      <div className={`grid place-items-center bg-black text-sm text-white/60 ${className}`}>
+        Vídeo indisponível.
+      </div>
+    );
+  }
+
+  const pct = duration ? (current / duration) * 100 : 0;
+
+  return (
+    <div
+      ref={wrapRef}
+      className={`group relative select-none overflow-hidden bg-black ${className}`}
+      onMouseMove={poke}
+      onMouseLeave={() => playing && setShowUi(false)}
+    >
+      {/* Host do YouTube (iframe injetado aqui). pointer-events off = nenhum clique chega no YT. */}
+      <div className="pointer-events-none absolute inset-0">
+        <div ref={hostRef} className="h-full w-full [&>iframe]:h-full [&>iframe]:w-full" />
+      </div>
+
+      {/* Máscara superior — esconde qualquer lampejo de título do YouTube */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-black/50 to-transparent" />
+
+      {/* Escudo de clique: bloqueia hover/click do YT e faz play/pause */}
+      <button
+        type="button"
+        onClick={togglePlay}
+        aria-label={playing ? "Pausar" : "Reproduzir"}
+        className="absolute inset-0 z-10 h-full w-full cursor-pointer"
+      />
+
+      {/* Carregando */}
+      {!ready && (
+        <div className="absolute inset-0 z-30 grid place-items-center bg-gradient-to-b from-[#0B152D] to-black">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {/* Play central quando pausado */}
+      {ready && !playing && !ended && (
+        <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center">
+          <span className="grid h-20 w-20 place-items-center rounded-full bg-primary/95 shadow-[var(--shadow-glow)] transition group-hover:scale-105">
+            <Play className="ml-1 h-8 w-8 fill-primary-foreground text-primary-foreground" />
+          </span>
+        </div>
+      )}
+
+      {/* Fim do vídeo — cobre o "endscreen" do YouTube */}
+      {ended && (
+        <div className="absolute inset-0 z-30 grid place-items-center bg-black/85 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={togglePlay}
+            className="inline-flex items-center gap-2 rounded-xl gradient-gold px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:brightness-110"
+          >
+            <RotateCcw className="h-4 w-4" /> Assistir de novo
+          </button>
+        </div>
+      )}
+
+      {/* Barra de controles própria */}
+      <div
+        className={`absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-2.5 pt-8 transition-opacity duration-300 md:px-4 ${
+          showUi || !playing ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {/* Progresso */}
+        <div
+          className="group/bar relative h-3 cursor-pointer"
+          onClick={(e) => seekTo(e.clientX, e.currentTarget)}
+        >
+          <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded-full bg-white/25">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-primary"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div
+            className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary opacity-0 shadow transition group-hover/bar:opacity-100"
+            style={{ left: `${pct}%` }}
+          />
+        </div>
+
+        {/* Botões */}
+        <div className="mt-1 flex items-center gap-3 text-white">
+          <button type="button" onClick={togglePlay} aria-label={playing ? "Pausar" : "Reproduzir"} className="transition hover:text-primary">
+            {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={toggleMute} aria-label="Mudo" className="transition hover:text-primary">
+              {muted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={muted ? 0 : volume}
+              onChange={(e) => changeVolume(Number(e.target.value))}
+              aria-label="Volume"
+              className="hidden h-1 w-20 cursor-pointer accent-primary sm:block"
+            />
+          </div>
+
+          <div className="text-xs tabular-nums text-white/80">
+            {fmt(current)} <span className="text-white/40">/</span> {fmt(duration)}
+          </div>
+
+          <div className="ml-auto flex items-center gap-3">
+            <span className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40 sm:inline">
+              LURE Player
+            </span>
+            <button type="button" onClick={toggleFullscreen} aria-label="Tela cheia" className="transition hover:text-primary">
+              {isFs ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
