@@ -195,6 +195,7 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
         lessons: 6,
         progress: 20,
         accent: "gold",
+        thumb: "/rh-recrutamento.jpg",
       },
       {
         title: "Onboarding de Alta Performance",
