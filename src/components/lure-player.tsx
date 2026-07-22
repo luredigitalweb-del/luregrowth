@@ -39,10 +39,19 @@ export function LurePlayer({
   videoUrl,
   className = "",
   onEnded,
+  onDuration,
+  onPlayingChange,
+  onTime,
 }: {
   videoUrl: string;
   className?: string;
   onEnded?: () => void;
+  /** Duração do vídeo em segundos, assim que o YouTube informa. */
+  onDuration?: (seconds: number) => void;
+  /** true quando começa a tocar, false ao pausar/terminar. */
+  onPlayingChange?: (playing: boolean) => void;
+  /** Tempo atual (segundos) — dispara periodicamente enquanto toca. */
+  onTime?: (seconds: number) => void;
 }) {
   const id = parseYouTubeId(videoUrl);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -50,6 +59,8 @@ export function LurePlayer({
   const playerRef = useRef<any>(null);
   const endedCb = useRef(onEnded);
   endedCb.current = onEnded;
+  const cbs = useRef({ onDuration, onPlayingChange, onTime });
+  cbs.current = { onDuration, onPlayingChange, onTime };
 
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -92,7 +103,9 @@ export function LurePlayer({
           onReady: (e: any) => {
             if (cancelled) return;
             setReady(true);
-            setDuration(e.target.getDuration?.() || 0);
+            const d = e.target.getDuration?.() || 0;
+            setDuration(d);
+            if (d) cbs.current.onDuration?.(d);
             setVolume(e.target.getVolume?.() ?? 100);
             setMuted(e.target.isMuted?.() ?? false);
           },
@@ -101,12 +114,17 @@ export function LurePlayer({
             if (e.data === S.PLAYING) {
               setPlaying(true);
               setEnded(false);
-              setDuration(e.target.getDuration?.() || 0);
+              const d = e.target.getDuration?.() || 0;
+              setDuration(d);
+              if (d) cbs.current.onDuration?.(d);
+              cbs.current.onPlayingChange?.(true);
             } else if (e.data === S.PAUSED) {
               setPlaying(false);
+              cbs.current.onPlayingChange?.(false);
             } else if (e.data === S.ENDED) {
               setPlaying(false);
               setEnded(true);
+              cbs.current.onPlayingChange?.(false);
               endedCb.current?.();
             }
           },
@@ -131,13 +149,30 @@ export function LurePlayer({
     const iv = window.setInterval(() => {
       const p = playerRef.current;
       if (p?.getCurrentTime) {
-        setCurrent(p.getCurrentTime() || 0);
+        const t = p.getCurrentTime() || 0;
+        setCurrent(t);
+        cbs.current.onTime?.(t);
         const d = p.getDuration?.() || 0;
         if (d) setDuration((prev) => (Math.abs(prev - d) > 0.5 ? d : prev));
       }
-    }, 250);
+    }, 500);
     return () => window.clearInterval(iv);
   }, [playing]);
+
+  // Pausa o vídeo (e o cronômetro) quando o usuário sai da aba / minimiza.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) {
+        try {
+          playerRef.current?.pauseVideo?.();
+        } catch {
+          /* noop */
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   // Sincroniza estado de tela cheia.
   useEffect(() => {
@@ -228,9 +263,14 @@ export function LurePlayer({
       onMouseMove={poke}
       onMouseLeave={() => playing && setShowUi(false)}
     >
-      {/* Host do YouTube (iframe injetado aqui). pointer-events off = nenhum clique chega no YT. */}
-      <div className="pointer-events-none absolute inset-0">
-        <div ref={hostRef} className="h-full w-full [&>iframe]:h-full [&>iframe]:w-full" />
+      {/* Host do YouTube (iframe injetado aqui). pointer-events off = nenhum clique chega no YT.
+          O iframe é ampliado (overscan) e o container corta as bordas — assim o título do YouTube
+          (topo) e o botão "Assistir no YouTube" (canto) ficam fora da área visível. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div
+          ref={hostRef}
+          className="absolute left-1/2 top-1/2 h-[130%] w-[130%] -translate-x-1/2 -translate-y-1/2 [&>iframe]:h-full [&>iframe]:w-full"
+        />
       </div>
 
       {/* Máscara superior — esconde qualquer lampejo de título do YouTube */}

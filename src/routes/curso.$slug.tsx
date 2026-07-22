@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -28,6 +28,7 @@ import { toYouTubeEmbed } from "@/lib/youtube";
 import { Avatar, initialsOf } from "@/components/avatar";
 import { openSettings } from "@/components/profile-settings-modal";
 import { LurePlayer } from "@/components/lure-player";
+import { InlineTitle, InlineText } from "@/components/inline-edit";
 
 export const Route = createFileRoute("/curso/$slug")({
   head: ({ params }) => {
@@ -113,19 +114,48 @@ function CoursePage() {
     if (nextLesson) setCurrentLesson(nextLesson.n);
   };
 
-  // Vídeos (YouTube) por aula, vindos do banco
-  const [videos, setVideos] = useState<Record<number, string>>({});
-  const currentUrl = videos[currentLesson];
+  // Duração formatada mm:ss
+  const fmtDur = (s?: number) => {
+    if (!s || s <= 0) return null;
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  // Metadados por aula (vídeo + título/descrição editáveis + duração), do banco
+  type LessonMeta = { url?: string; title?: string; description?: string; duration?: number };
+  const [videos, setVideos] = useState<Record<number, LessonMeta>>({});
+  const currentMeta = videos[currentLesson] ?? {};
+  const currentUrl = currentMeta.url;
+
+  const DEFAULT_DESC =
+    "Aprenda como transformar suas redes sociais em uma máquina previsível de vendas de alto ticket. Nesta aula, vamos desconstruir o processo exato que os maiores players do mercado utilizam para atrair, engajar e converter desconhecidos em clientes fiéis.";
+  const displayTitle = currentMeta.title || active.title;
+  const displayDesc = currentMeta.description || DEFAULT_DESC;
+  const displayDuration = fmtDur(currentMeta.duration) ?? active.duration;
 
   const loadVideos = useCallback(async () => {
     const { data } = await supabase
       .from("lesson_videos")
-      .select("lesson_n, youtube_url")
+      .select("lesson_n, youtube_url, title, description, duration_seconds")
       .eq("course_slug", slug);
-    const map: Record<number, string> = {};
-    (data ?? []).forEach((r: { lesson_n: number; youtube_url: string | null }) => {
-      if (r.youtube_url) map[r.lesson_n] = r.youtube_url;
-    });
+    const map: Record<number, LessonMeta> = {};
+    (data ?? []).forEach(
+      (r: {
+        lesson_n: number;
+        youtube_url: string | null;
+        title: string | null;
+        description: string | null;
+        duration_seconds: number | null;
+      }) => {
+        map[r.lesson_n] = {
+          url: r.youtube_url ?? undefined,
+          title: r.title ?? undefined,
+          description: r.description ?? undefined,
+          duration: r.duration_seconds ?? undefined,
+        };
+      },
+    );
     setVideos(map);
   }, [slug]);
 
@@ -133,19 +163,102 @@ function CoursePage() {
     loadVideos();
   }, [loadVideos]);
 
-  const saveVideo = async (url: string) => {
-    await supabase.from("lesson_videos").upsert(
+  const saveLessonMeta = useCallback(
+    async (patch: Record<string, unknown>) => {
+      await supabase.from("lesson_videos").upsert(
+        {
+          course_slug: slug,
+          lesson_n: currentLesson,
+          updated_by: session?.user?.id ?? null,
+          updated_at: new Date().toISOString(),
+          ...patch,
+        },
+        { onConflict: "course_slug,lesson_n" },
+      );
+      await loadVideos();
+    },
+    [slug, currentLesson, session?.user?.id, loadVideos],
+  );
+
+  const saveVideo = (url: string) => saveLessonMeta({ youtube_url: url || null });
+
+  // Captura a duração do próprio vídeo do YouTube e guarda no banco.
+  const onVideoDuration = useCallback(
+    (secs: number) => {
+      const r = Math.round(secs);
+      if (r > 0 && Math.abs((currentMeta.duration ?? 0) - r) > 2)
+        saveLessonMeta({ duration_seconds: r });
+    },
+    [currentMeta.duration, saveLessonMeta],
+  );
+
+  // ---- Cronômetro de tempo assistido (pausa ao pausar/sair) ----
+  const userId = session?.user?.id;
+  const watch = useRef({ playing: false, watched: 0, pos: 0, lastT: 0, dirty: false });
+
+  const flushProgress = useCallback(async () => {
+    const w = watch.current;
+    if (!userId || !w.dirty) return;
+    w.dirty = false;
+    await supabase.from("lesson_progress").upsert(
       {
+        user_id: userId,
         course_slug: slug,
         lesson_n: currentLesson,
-        youtube_url: url || null,
-        updated_by: session?.user?.id ?? null,
+        watched_seconds: Math.round(w.watched),
+        last_position: Math.round(w.pos),
+        completed: completed.has(currentLesson),
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "course_slug,lesson_n" },
+      { onConflict: "user_id,course_slug,lesson_n" },
     );
-    await loadVideos();
-  };
+  }, [userId, slug, currentLesson, completed]);
+
+  // Ao trocar de aula: zera o acumulador e carrega o progresso salvo.
+  useEffect(() => {
+    watch.current = { playing: false, watched: 0, pos: 0, lastT: 0, dirty: false };
+    if (!userId) return;
+    supabase
+      .from("lesson_progress")
+      .select("watched_seconds, last_position")
+      .eq("user_id", userId)
+      .eq("course_slug", slug)
+      .eq("lesson_n", currentLesson)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          watch.current.watched = data.watched_seconds ?? 0;
+          watch.current.pos = data.last_position ?? 0;
+        }
+      });
+  }, [userId, slug, currentLesson]);
+
+  const onVideoPlayingChange = useCallback((playing: boolean) => {
+    watch.current.playing = playing;
+    if (!playing) watch.current.dirty = true;
+  }, []);
+
+  const onVideoTime = useCallback((t: number) => {
+    const w = watch.current;
+    if (w.playing) {
+      const delta = t - w.lastT;
+      if (delta > 0 && delta < 2) {
+        w.watched += delta;
+        w.dirty = true;
+      }
+    }
+    w.lastT = t;
+    w.pos = t;
+  }, []);
+
+  // Salva o progresso periodicamente e ao sair da aula/página.
+  useEffect(() => {
+    const iv = window.setInterval(() => flushProgress(), 6000);
+    return () => {
+      window.clearInterval(iv);
+      flushProgress();
+    };
+  }, [flushProgress]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -189,9 +302,12 @@ function CoursePage() {
           <VideoPlayer
             url={currentUrl}
             lessonN={active.n}
-            duration={active.duration}
+            duration={displayDuration}
             isAdmin={isAdmin}
             onSave={saveVideo}
+            onDuration={onVideoDuration}
+            onPlayingChange={onVideoPlayingChange}
+            onTime={onVideoTime}
           />
 
           {/* Lesson info */}
@@ -201,13 +317,19 @@ function CoursePage() {
               {courseTitle}
             </div>
             <h1 className="mt-2.5 font-display text-xl font-bold leading-tight sm:text-2xl lg:text-3xl">
-              Aula {active.n}: {active.title}
+              <span className="text-muted-foreground">Aula {active.n}: </span>
+              <InlineTitle
+                value={displayTitle}
+                canEdit={isAdmin}
+                onSave={(t) => saveLessonMeta({ title: t })}
+                placeholder="Título da aula"
+              />
             </h1>
 
             {/* Meta chips */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                <Clock className="h-3.5 w-3.5" /> {active.duration}
+                <Clock className="h-3.5 w-3.5" /> {displayDuration}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 <Play className="h-3 w-3 fill-current" /> Aula {active.n} de {lessons.length}
@@ -219,11 +341,14 @@ function CoursePage() {
               )}
             </div>
 
-            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Aprenda como transformar suas redes sociais em uma máquina previsível de vendas de
-              alto ticket. Nesta aula, vamos desconstruir o processo exato que os maiores players do
-              mercado utilizam para atrair, engajar e converter desconhecidos em clientes fiéis.
-            </p>
+            <div className="mt-4">
+              <InlineText
+                value={displayDesc}
+                canEdit={isAdmin}
+                onSave={(d) => saveLessonMeta({ description: d })}
+                placeholder="Escreva a descrição desta aula…"
+              />
+            </div>
 
             {/* Ações principais */}
             <div className="mt-5 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
@@ -326,7 +451,7 @@ function CoursePage() {
               const isActive = l.n === currentLesson;
               const isProva = l.kind === "prova";
               const isDone = completed.has(l.n);
-              const hasVideo = !!videos[l.n];
+              const hasVideo = !!videos[l.n]?.url;
               return (
                 <li key={l.n}>
                   <button
@@ -419,12 +544,18 @@ function VideoPlayer({
   duration,
   isAdmin,
   onSave,
+  onDuration,
+  onPlayingChange,
+  onTime,
 }: {
   url?: string;
   lessonN: number;
   duration: string;
   isAdmin: boolean;
   onSave: (url: string) => Promise<void>;
+  onDuration?: (s: number) => void;
+  onPlayingChange?: (p: boolean) => void;
+  onTime?: (s: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(url ?? "");
@@ -453,89 +584,95 @@ function VideoPlayer({
 
   return (
     <div className="flex w-full justify-center bg-black">
-    <div className="relative aspect-video max-h-[calc(100vh-4rem)] w-full max-w-[calc((100vh-4rem)*16/9)] overflow-hidden">
-      {embed && !editing ? (
-        <LurePlayer videoUrl={url!} className="absolute inset-0 h-full w-full" />
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#0B152D] to-black px-6 text-center">
-          {editing ? (
-            <div className="w-full max-w-md rounded-2xl border border-border bg-surface/95 p-5 text-left shadow-2xl backdrop-blur">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Youtube className="h-4 w-4 text-red-500" /> Link do YouTube — Aula {lessonN}
+      <div className="relative aspect-video max-h-[calc(100vh-4rem)] w-full max-w-[calc((100vh-4rem)*16/9)] overflow-hidden">
+        {embed && !editing ? (
+          <LurePlayer
+            videoUrl={url!}
+            className="absolute inset-0 h-full w-full"
+            onDuration={onDuration}
+            onPlayingChange={onPlayingChange}
+            onTime={onTime}
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#0B152D] to-black px-6 text-center">
+            {editing ? (
+              <div className="w-full max-w-md rounded-2xl border border-border bg-surface/95 p-5 text-left shadow-2xl backdrop-blur">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Youtube className="h-4 w-4 text-red-500" /> Link do YouTube — Aula {lessonN}
+                </div>
+                <input
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
+                />
+                {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setEditing(false);
+                      setValue(url ?? "");
+                      setError(null);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" /> Cancelar
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="inline-flex items-center gap-1.5 rounded-lg gradient-gold px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:brightness-110 disabled:opacity-70"
+                  >
+                    {saving ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Send className="h-3.5 w-3.5" />
+                    )}
+                    Salvar
+                  </button>
+                </div>
               </div>
-              <input
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="https://www.youtube.com/watch?v=..."
-                className="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
-              />
-              {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
-              <div className="mt-3 flex items-center justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setEditing(false);
-                    setValue(url ?? "");
-                    setError(null);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                >
-                  <X className="h-3.5 w-3.5" /> Cancelar
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="inline-flex items-center gap-1.5 rounded-lg gradient-gold px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:brightness-110 disabled:opacity-70"
-                >
-                  {saving ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Send className="h-3.5 w-3.5" />
-                  )}
-                  Salvar
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="grid h-16 w-16 place-items-center rounded-full border border-white/15 bg-white/5">
-                <Youtube className="h-7 w-7 text-white/60" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white/90">Vídeo em breve</p>
-                <p className="mt-1 text-xs text-white/50">
-                  Aula {lessonN} · {duration}
-                </p>
-              </div>
-              {isAdmin && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="mt-1 inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
-                >
-                  <Youtube className="h-4 w-4" /> Adicionar link do YouTube
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Badge + editar (admin) sobre o vídeo */}
-      {embed && !editing && (
-        <>
-          <div className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white/80 backdrop-blur">
-            Aula {lessonN} · {duration}
+            ) : (
+              <>
+                <div className="grid h-16 w-16 place-items-center rounded-full border border-white/15 bg-white/5">
+                  <Youtube className="h-7 w-7 text-white/60" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white/90">Vídeo em breve</p>
+                  <p className="mt-1 text-xs text-white/50">
+                    Aula {lessonN} · {duration}
+                  </p>
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="mt-1 inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
+                  >
+                    <Youtube className="h-4 w-4" /> Adicionar link do YouTube
+                  </button>
+                )}
+              </>
+            )}
           </div>
-          {isAdmin && (
-            <button
-              onClick={() => setEditing(true)}
-              className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/60 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur transition hover:bg-black/80"
-            >
-              <Pencil className="h-3.5 w-3.5" /> Trocar vídeo
-            </button>
-          )}
-        </>
-      )}
-    </div>
+        )}
+
+        {/* Badge + editar (admin) sobre o vídeo */}
+        {embed && !editing && (
+          <>
+            <div className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white/80 backdrop-blur">
+              Aula {lessonN} · {duration}
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => setEditing(true)}
+                className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/60 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur transition hover:bg-black/80"
+              >
+                <Pencil className="h-3.5 w-3.5" /> Trocar vídeo
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
