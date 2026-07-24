@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { supabase } from "@/lib/supabase";
 import {
   Play,
   Target,
@@ -390,9 +391,38 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
   },
 ];
 
+/**
+ * Capas vindas do banco (painel admin), indexadas por `${section_id}|${title}`.
+ * Quando existe uma capa salva no painel, ela substitui a imagem fixa do código.
+ */
+const CoversContext = createContext<Record<string, string>>({});
+const coverKey = (sectionId: string, title: string) => `${sectionId}|${title.trim()}`;
+
 function Portal() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [covers, setCovers] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let alive = true;
+    supabase
+      .from("modules")
+      .select("section_id, title, cover_url")
+      .not("cover_url", "is", null)
+      .then(({ data }) => {
+        if (!alive || !data) return;
+        const map: Record<string, string> = {};
+        for (const row of data as { section_id: string; title: string; cover_url: string }[]) {
+          if (row.cover_url) map[coverKey(row.section_id, row.title)] = row.cover_url;
+        }
+        setCovers(map);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   return (
+    <CoversContext.Provider value={covers}>
     <div className="min-h-screen bg-background text-foreground">
       <div className="flex">
         <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} />
@@ -424,6 +454,7 @@ function Portal() {
         </div>
       </div>
     </div>
+    </CoversContext.Provider>
   );
 }
 
@@ -713,7 +744,7 @@ export function Sidebar({
 
   return (
     <aside
-      className={`dark-scope sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border/60 bg-gradient-to-b from-surface/80 to-background transition-all duration-300 lg:flex ${
+      className={`dark-scope sticky top-0 z-40 hidden h-screen shrink-0 flex-col border-r border-border/60 bg-gradient-to-b from-surface/80 to-background transition-all duration-300 lg:flex ${
         open ? "w-[260px] px-4 py-5" : "w-[76px] items-center py-5 px-3"
       }`}
     >
@@ -1173,7 +1204,7 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
               data-card
               className="w-[calc(100%-1rem)] shrink-0 snap-start sm:w-[calc(50%-0.625rem)] lg:w-[calc(33.333%-0.833rem)] xl:w-[calc(25%-0.9375rem)]"
             >
-              <ModuleCard m={m} />
+              <ModuleCard m={m} sectionId={section.id} />
             </div>
           ))}
         </div>
@@ -1182,10 +1213,14 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
   );
 }
 
-function ModuleCard({ m }: { m: Module }) {
+function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
   // Cor neutra e fixa para todos os cards — sem paleta colorida
   const accentBar = "bg-foreground/70";
   const glow = "oklch(from var(--foreground) l c h / 0.12)";
+
+  // Capa salva no painel admin (banco) tem prioridade sobre a imagem fixa do código.
+  const covers = useContext(CoversContext);
+  const thumb = covers[coverKey(sectionId, m.title)] ?? m.thumb;
 
   const slug = m.title
     .toLowerCase()
@@ -1213,14 +1248,14 @@ function ModuleCard({ m }: { m: Module }) {
       }`}
     >
       {/* Optional thumb background */}
-      {m.thumb && (
+      {thumb && (
         <img
-          src={m.thumb}
+          src={thumb}
           alt={m.title}
           className="pointer-events-none absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
       )}
-      {!m.thumb && (
+      {!thumb && (
         <>
           {/* Sem foto: logo da LURE em fundo preto */}
           <div className="pointer-events-none absolute inset-0 bg-black" />
