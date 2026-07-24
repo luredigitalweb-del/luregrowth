@@ -29,6 +29,7 @@ import { Avatar, initialsOf } from "@/components/avatar";
 import { openSettings } from "@/components/profile-settings-modal";
 import { LurePlayer } from "@/components/lure-player";
 import { InlineTitle, InlineText } from "@/components/inline-edit";
+import { uploadMaterial, validateMaterialFile } from "@/lib/sections";
 
 export const Route = createFileRoute("/curso/$slug")({
   head: ({ params }) => {
@@ -380,15 +381,8 @@ function CoursePage() {
               )}
             </div>
 
-            {/* Materiais */}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground">
-                <FileText className="h-4 w-4" /> Material da aula
-              </button>
-              <button className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground">
-                <Download className="h-4 w-4" /> Baixar recursos
-              </button>
-            </div>
+            {/* Materiais da aula */}
+            <LessonMaterials slug={slug} lessonN={active.n} isAdmin={isAdmin} userId={session?.user?.id} />
           </div>
 
           {/* Comments */}
@@ -673,6 +667,138 @@ function VideoPlayer({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ---------------- Materiais da aula ---------------- */
+
+type Material = { id: string; label: string; url: string };
+
+function LessonMaterials({
+  slug,
+  lessonN,
+  isAdmin,
+  userId,
+}: {
+  slug: string;
+  lessonN: number;
+  isAdmin: boolean;
+  userId?: string;
+}) {
+  const [items, setItems] = useState<Material[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from("lesson_materials")
+      .select("id, label, url")
+      .eq("course_slug", slug)
+      .eq("lesson_n", lessonN)
+      .order("created_at", { ascending: true });
+    setItems((data as Material[]) ?? []);
+  }, [slug, lessonN]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const add = async (f: File | null) => {
+    if (!f) return;
+    const invalid = validateMaterialFile(f);
+    if (invalid) return setError(invalid);
+    setError(null);
+    setBusy(true);
+    try {
+      const url = await uploadMaterial(f, slug, lessonN);
+      const { error: insErr } = await supabase.from("lesson_materials").insert({
+        course_slug: slug,
+        lesson_n: lessonN,
+        label: f.name,
+        url,
+        created_by: userId ?? null,
+      });
+      if (insErr) throw insErr;
+      await load();
+    } catch (e: unknown) {
+      setError(`Não subiu: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const remove = async (id: string) => {
+    if (!window.confirm("Remover este material?")) return;
+    await supabase.from("lesson_materials").delete().eq("id", id);
+    load();
+  };
+
+  // Sem materiais e sem ser admin: não mostra nada.
+  if (items.length === 0 && !isAdmin) return null;
+
+  return (
+    <div className="mt-4">
+      <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <FileText className="h-3.5 w-3.5" /> Materiais da aula
+      </div>
+
+      {items.length > 0 ? (
+        <ul className="flex flex-col gap-2">
+          {items.map((it) => (
+            <li key={it.id} className="flex items-center gap-2">
+              <a
+                href={it.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="inline-flex flex-1 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+              >
+                <Download className="h-4 w-4 text-primary" />
+                <span className="truncate">{it.label}</span>
+              </a>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => remove(it.id)}
+                  className="shrink-0 rounded-lg border border-red-500/30 px-2.5 py-2 text-red-400 transition hover:bg-red-500/10"
+                  title="Remover material"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">Nenhum material ainda.</p>
+      )}
+
+      {isAdmin && (
+        <div className="mt-2.5">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3.5 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-60"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            {busy ? "Enviando…" : "Adicionar material"}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => add(e.target.files?.[0] ?? null)}
+          />
+          {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            PDF, planilha, zip… até 50 MB. O aluno baixa clicando no material.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

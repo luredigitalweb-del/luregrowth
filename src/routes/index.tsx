@@ -1229,8 +1229,8 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-  // Módulo do banco (com aulas/vídeos reais) nunca fica "em gravação".
-  const emGravacao = m.progress === 0 && !m.moduleId;
+  // Todos os cards são clicáveis (removido o estado "em gravação").
+  const emGravacao = false;
 
   const linkProps = m.moduleId
     ? ({ to: "/modulo/$id", params: { id: m.moduleId } } as const)
