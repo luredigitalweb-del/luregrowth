@@ -366,7 +366,7 @@ function EditableAuthor({ value, editMode, onSave }: { value: string | null; edi
   );
 }
 
-function CoverButton({ mod, onSaved }: { mod: ModuleRow; onSaved: (url: string) => void }) {
+function CoverButton({ mod, onSaved }: { mod: ModuleRow; onSaved: (url: string | null) => void }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const ref = useRef<HTMLInputElement>(null);
@@ -388,6 +388,20 @@ function CoverButton({ mod, onSaved }: { mod: ModuleRow; onSaved: (url: string) 
     }
   };
 
+  const remove = async () => {
+    if (!window.confirm("Remover a capa deste módulo?")) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      await onSaved(null);
+      setStatus({ type: "ok", text: "Capa removida!" });
+    } catch (e: unknown) {
+      setStatus({ type: "err", text: `Não removeu: ${e instanceof Error ? e.message : String(e)}` });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button
@@ -399,6 +413,16 @@ function CoverButton({ mod, onSaved }: { mod: ModuleRow; onSaved: (url: string) 
         {busy ? "Salvando…" : mod.cover_url ? "Trocar foto" : "Adicionar foto"}
         <input ref={ref} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
       </button>
+      {mod.cover_url && (
+        <button
+          type="button"
+          onClick={remove}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" /> Remover foto
+        </button>
+      )}
       {status && (
         <span
           className={`inline-flex items-center gap-1 text-xs font-medium ${

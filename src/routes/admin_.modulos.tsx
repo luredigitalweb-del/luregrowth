@@ -203,6 +203,7 @@ function ModuleForm({
   const [description, setDescription] = useState(editing?.description ?? "");
   const [cover, setCover] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(editing?.cover_url ?? null);
+  const [removeCover, setRemoveCover] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -226,6 +227,7 @@ function ModuleForm({
     if (preview && cover) URL.revokeObjectURL(preview);
     setCover(f);
     setPreview(URL.createObjectURL(f));
+    setRemoveCover(false);
     setMsg(null);
   };
 
@@ -286,6 +288,16 @@ function ModuleForm({
         // Não chama onSaved() para o admin poder tentar de novo sem perder o formulário.
         return;
       }
+    } else if (removeCover && moduleId) {
+      // Remover a capa: limpa a URL no banco (a imagem antiga fica no storage, mas o módulo passa a não ter capa).
+      const { error: rmErr } = await supabase
+        .from("modules")
+        .update({ cover_url: null })
+        .eq("id", moduleId);
+      if (rmErr) {
+        setSaving(false);
+        return setMsg({ type: "err", text: `Não removeu a capa: ${rmErr.message}` });
+      }
     }
 
     setSaving(false);
@@ -341,7 +353,14 @@ function ModuleForm({
               {preview && (
                 <button
                   type="button"
-                  onClick={() => { setCover(null); setPreview(null); if (fileRef.current) fileRef.current.value = ""; }}
+                  onClick={() => {
+                    if (preview && cover) URL.revokeObjectURL(preview);
+                    setCover(null);
+                    setPreview(null);
+                    // Se o módulo já tinha capa salva, marca para apagar no banco ao salvar.
+                    if (isEdit && editing?.cover_url) setRemoveCover(true);
+                    if (fileRef.current) fileRef.current.value = "";
+                  }}
                   className="text-left text-[11px] text-muted-foreground transition hover:text-red-400"
                 >
                   remover
@@ -359,6 +378,11 @@ function ModuleForm({
           {cover && (
             <p className="mt-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-[11px] font-medium text-primary">
               Imagem escolhida. Clique em <b>“{isEdit ? "Salvar alterações" : "Adicionar módulo"}”</b> abaixo para gravar.
+            </p>
+          )}
+          {removeCover && !cover && (
+            <p className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] font-medium text-red-400">
+              Capa marcada para remoção. Clique em <b>“Salvar alterações”</b> abaixo para confirmar.
             </p>
           )}
         </div>
