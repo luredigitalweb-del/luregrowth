@@ -46,6 +46,6 @@ export async function uploadCover(file: File, moduleKey: string): Promise<string
 
 export function validateImageFile(file: File): string | null {
   if (!file.type.startsWith("image/")) return "Escolha um arquivo de imagem (JPG, PNG…).";
-  if (file.size > 5 * 1024 * 1024) return "A imagem precisa ter no máximo 5 MB.";
+  if (file.size > 10 * 1024 * 1024) return "A imagem precisa ter no máximo 10 MB.";
   return null;
 }
