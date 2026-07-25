@@ -1108,7 +1108,7 @@ function HeroBanner() {
         <img
           src="/banner-home.jpg"
           alt="LURE Growth"
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          className="absolute inset-0 h-full w-full object-cover object-[72%_center]"
         />
         {/* Left-to-right readability mask so the text stays legible over the photo */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#050914]/85 via-[#050914]/35 to-transparent" />
