@@ -118,81 +118,19 @@ function LoginLayout() {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
-      {/* ─────────── Painel cinematográfico (desktop) ─────────── */}
-      <aside className="lure-grain relative hidden overflow-hidden lg:block">
-        <img
-          src="/banner-home.jpg"
-          alt="Time Lure Digital"
-          className="lure-kenburns absolute inset-0 h-full w-full object-cover object-[78%_center]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050914] via-[#050914]/70 to-[#050914]/25" />
-        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_80%_-10%,oklch(0.82_0.11_80/0.28),transparent_55%)]" />
-        <div className="lure-scanline" />
-
-        <div className="relative flex h-full flex-col justify-between p-12 xl:p-14">
-          {/* Logo lockup — sem aro, com hairline animada */}
-          <div className="lure-rise flex items-center gap-3.5" style={{ ["--d" as string]: "80ms" }}>
-            <img src={lureLogo.url} alt="LURE" className="h-11 w-11 rounded-full object-contain" />
-            <div className="leading-tight">
-              <div className="font-display text-lg font-bold tracking-[0.18em] text-white">LURE</div>
-              <div className="mt-1 h-px w-8 lure-hairline" />
-              <div className="mt-1 text-[10px] uppercase tracking-[0.34em] text-white/60">Growth</div>
-            </div>
-          </div>
-
-          {/* Manifesto */}
-          <div className="max-w-md">
-            <p className="lure-rise mb-5 text-sm font-medium uppercase tracking-[0.28em] text-primary/90" style={{ ["--d" as string]: "180ms" }}>
-              Área de Membros
-            </p>
-            <h2 className="lure-rise font-display text-[2.6rem] font-bold leading-[1.05] text-white" style={{ ["--d" as string]: "260ms" }}>
-              Onde a Lure
-              <br />
-              <span className="italic text-primary" style={{ fontFamily: '"Cormorant Garamond", serif', fontWeight: 600 }}>
-                cresce junto
-              </span>{" "}
-              com você.
-            </h2>
-            <p className="lure-rise mt-5 max-w-sm text-[15px] leading-relaxed text-white/65" style={{ ["--d" as string]: "340ms" }}>
-              Trilhas guiadas, mentorias ao vivo e uma comunidade de alto impacto — tudo em um só lugar.
-            </p>
-
-            {/* Prova social */}
-            <div className="lure-rise mt-9 flex items-center gap-4" style={{ ["--d" as string]: "440ms" }}>
-              <div className="flex -space-x-3">
-                {["#E8A87C", "#C9A36B", "#8FB3C9", "#B08FC9"].map((c, i) => (
-                  <span
-                    key={i}
-                    className="grid h-9 w-9 place-items-center rounded-full border-2 border-[#050914] text-[11px] font-bold text-[#050914]"
-                    style={{ backgroundColor: c }}
-                  >
-                    {["A", "M", "F", "G"][i]}
-                  </span>
-                ))}
-              </div>
-              <p className="text-xs leading-tight text-white/55">
-                <span className="font-semibold text-white/80">+300 membros</span>
-                <br />
-                evoluindo todos os dias
-              </p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* ─────────── Formulário ─────────── */}
-      <main className="relative flex items-center justify-center px-6 py-14 sm:px-10">
+    <div className="min-h-screen">
+      {/* ─────────── Formulário centralizado ─────────── */}
+      <main className="relative flex min-h-screen items-center justify-center px-6 py-14 sm:px-10">
         <div className="lure-aurora lure-aurora-a" style={{ width: 420, height: 420, top: "-8%", right: "-6%", background: "oklch(0.78 0.11 75 / 0.16)" }} />
         <div className="lure-aurora lure-aurora-b" style={{ width: 360, height: 360, bottom: "-10%", left: "-8%", background: "oklch(0.7 0.09 250 / 0.14)" }} />
 
         <div className="relative w-full max-w-md">
-          {/* Logo (mobile) */}
-          <div className="lure-rise mb-9 flex items-center gap-3 lg:hidden" style={{ ["--d" as string]: "40ms" }}>
-            <img src={lureLogo.url} alt="LURE" className="h-11 w-11 rounded-full object-contain" />
+          {/* Logo (centralizada, acima do cartão) */}
+          <div className="lure-rise mb-9 flex flex-col items-center gap-3 text-center" style={{ ["--d" as string]: "40ms" }}>
+            <img src={lureLogo.url} alt="LURE" className="h-16 w-16 rounded-full object-contain" />
             <div className="leading-tight">
-              <div className="font-display text-lg font-bold tracking-[0.16em]">LURE</div>
-              <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">Growth</div>
+              <div className="font-display text-lg font-bold tracking-[0.18em]">LURE</div>
+              <div className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground">Growth</div>
             </div>
           </div>
 
