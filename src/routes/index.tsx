@@ -20,8 +20,6 @@ import {
   LogOut,
   Crown,
   LifeBuoy,
-  Sun,
-  Moon,
   Hexagon,
   ShieldCheck,
 } from "lucide-react";
@@ -1021,36 +1019,30 @@ function ProfileMenu({ open }: { open: boolean }) {
   );
 }
 
-function ThemeToggle() {
-  const [light, setLight] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return document.documentElement.classList.contains("light");
-  });
-
-  useEffect(() => {
-    const saved = localStorage.getItem("lure-theme");
-    if (saved === "light") {
-      document.documentElement.classList.add("light");
-      setLight(true);
-    }
-  }, []);
-
-  const toggle = () => {
-    const next = !light;
-    setLight(next);
-    document.documentElement.classList.toggle("light", next);
-    localStorage.setItem("lure-theme", next ? "light" : "dark");
-  };
+function ProgressPill() {
+  // Progresso geral: soma ponderada pelas aulas de cada módulo.
+  const mods = sections.flatMap((s) => s.modules);
+  const total = mods.reduce((a, m) => a + m.lessons, 0);
+  const done = mods.reduce((a, m) => a + Math.round((m.lessons * m.progress) / 100), 0);
+  const pct = total ? Math.round((done / total) * 100) : 0;
 
   return (
-    <button
-      onClick={toggle}
-      aria-label={light ? "Ativar modo escuro" : "Ativar modo claro"}
-      title={light ? "Modo escuro" : "Modo claro"}
-      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground shadow-sm transition hover:text-foreground hover:border-primary/40 hover:shadow-glow"
+    <div
+      title={`${done} de ${total} aulas concluídas`}
+      className="hidden sm:flex items-center rounded-full border border-border bg-surface px-4 py-2 shadow-sm"
     >
-      {light ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-    </button>
+      <div className="flex flex-col">
+        <span className="text-[10px] font-semibold uppercase leading-none tracking-[0.18em] text-muted-foreground">
+          Seu progresso
+        </span>
+        <div className="mt-1.5 flex items-center gap-2">
+          <div className="h-1.5 w-24 overflow-hidden rounded-full bg-border">
+            <div className="h-full rounded-full gradient-gold" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="text-xs font-semibold leading-none text-foreground">{pct}%</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1069,7 +1061,7 @@ export function TopBar() {
         />
       </div>
       <div className="flex items-center gap-3">
-        <ThemeToggle />
+        <ProgressPill />
         <button className="relative flex h-10 w-10 items-center justify-center rounded-full bg-surface text-muted-foreground transition hover:text-foreground">
           <Bell className="h-4 w-4" />
           <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
