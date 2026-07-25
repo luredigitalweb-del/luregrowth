@@ -1104,47 +1104,10 @@ function HeroBanner() {
     <section className="relative overflow-hidden border-b border-border">
       <div className="relative h-[520px] md:h-[600px] w-full">
         <img
-          src={lureTeam.url}
-          alt="Time Lure Digital"
-          className="absolute inset-0 h-full w-full object-cover object-center brightness-110 saturate-110"
+          src="/banner-home.jpg"
+          alt="LURE Growth"
+          className="absolute inset-0 h-full w-full object-cover object-center"
         />
-        {/* Subtle dark vignette — keeps text readable without washing the photo */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050914]/80 via-[#050914]/20 to-transparent" />
-        {/* Soft left-to-right readability mask using dark navy, not the light background */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050914]/70 via-[#050914]/30 to-transparent" />
-
-        <div className="relative z-10 flex h-full flex-col justify-center p-8 md:p-14">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
-              </span>
-              Área de Membros · Temporada 2026
-            </div>
-
-            <h1 className="mt-5 font-display text-4xl font-bold leading-[1.02] tracking-tight text-white md:text-6xl">
-              Bem-vindo ao <span className="text-white">LURE Growth</span>
-            </h1>
-
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/80 md:text-base">
-              A plataforma oficial da agência que já rodou +R$100M em mídia. Trilhas guiadas,
-              mentorias ao vivo e a comunidade que cresce junto com você.
-            </p>
-
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <button className="group inline-flex items-center gap-2 rounded-xl gradient-gold px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:brightness-110">
-                <Target className="h-4 w-4" />
-                Fazer Diagnóstico
-                <ChevronRight className="h-4 w-4 transition group-hover:translate-x-1" />
-              </button>
-              <button className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15">
-                <Play className="h-4 w-4 fill-current" />
-                Assistir tour
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );
