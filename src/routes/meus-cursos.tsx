@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Play, CheckCircle2, Award, Download, Sparkles } from "lucide-react";
 import {
@@ -9,7 +9,10 @@ import {
   sections,
   type Module,
 } from "./index";
+import { supabase } from "@/lib/supabase";
 import lureTeam from "@/assets/lure-team.jpg.asset.json";
+
+const coverKey = (sectionId: string, title: string) => `${sectionId}|${title.trim()}`;
 
 export const Route = createFileRoute("/meus-cursos")({
   head: () => ({
@@ -44,6 +47,27 @@ function MeusCursosPage() {
   const { tab } = Route.useSearch();
   const navigate = Route.useNavigate();
   const setTab = (t: TabKey) => navigate({ search: { tab: t } });
+
+  // Capas reais salvas no painel (banco), mesmo esquema da Home.
+  const [covers, setCovers] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let alive = true;
+    supabase
+      .from("modules")
+      .select("section_id, title, cover_url")
+      .not("cover_url", "is", null)
+      .then(({ data }) => {
+        if (!alive || !data) return;
+        const map: Record<string, string> = {};
+        for (const row of data as { section_id: string; title: string; cover_url: string }[]) {
+          if (row.cover_url) map[coverKey(row.section_id, row.title)] = row.cover_url;
+        }
+        setCovers(map);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const all: EnrichedModule[] = useMemo(
     () =>
@@ -116,7 +140,7 @@ function MeusCursosPage() {
                       tab === "certificados" ? (
                         <CertificateCard key={m.title} m={m} />
                       ) : (
-                        <CourseCard key={m.title} m={m} />
+                        <CourseCard key={m.title} m={m} covers={covers} />
                       ),
                     )}
                   </div>
@@ -134,8 +158,10 @@ function MeusCursosPage() {
 
 /* ---------------- Cards ---------------- */
 
-function CourseCard({ m }: { m: EnrichedModule }) {
+function CourseCard({ m, covers }: { m: EnrichedModule; covers: Record<string, string> }) {
   const done = m.progress >= 100;
+  // Capa real do banco > thumb do código > foto padrão do time.
+  const cover = covers[coverKey(m.sectionId, m.title)] ?? m.thumb ?? lureTeam.url;
   return (
     <Link
       to="/curso/$slug"
@@ -145,7 +171,7 @@ function CourseCard({ m }: { m: EnrichedModule }) {
       {/* Thumbnail */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-surface">
         <img
-          src={lureTeam.url}
+          src={cover}
           alt={m.title}
           className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
