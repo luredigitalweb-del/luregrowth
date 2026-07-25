@@ -1026,21 +1026,46 @@ function ProgressPill() {
   const done = mods.reduce((a, m) => a + Math.round((m.lessons * m.progress) / 100), 0);
   const pct = total ? Math.round((done / total) * 100) : 0;
 
+  const r = 15.5;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (pct / 100) * circ;
+
   return (
     <div
       title={`${done} de ${total} aulas concluídas`}
-      className="hidden sm:flex items-center rounded-full border border-border bg-surface px-4 py-2 shadow-sm"
+      className="hidden items-center gap-2.5 rounded-full border border-border bg-surface py-1.5 pl-1.5 pr-4 shadow-sm transition hover:border-primary/40 sm:flex"
     >
-      <div className="flex flex-col">
-        <span className="text-[10px] font-semibold uppercase leading-none tracking-[0.18em] text-muted-foreground">
-          Seu progresso
+      <div className="relative h-9 w-9 shrink-0">
+        <svg viewBox="0 0 40 40" className="h-9 w-9 -rotate-90">
+          <circle cx="20" cy="20" r={r} fill="none" strokeWidth="4" className="stroke-border" />
+          <circle
+            cx="20"
+            cy="20"
+            r={r}
+            fill="none"
+            stroke="url(#lureProgress)"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            style={{ transition: "stroke-dashoffset 0.6s ease" }}
+          />
+          <defs>
+            <linearGradient id="lureProgress" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#F6CE86" />
+              <stop offset="100%" stopColor="#DE9F44" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground">
+          {pct}%
         </span>
-        <div className="mt-1.5 flex items-center gap-2">
-          <div className="h-1.5 w-24 overflow-hidden rounded-full bg-border">
-            <div className="h-full rounded-full gradient-gold" style={{ width: `${pct}%` }} />
-          </div>
-          <span className="text-xs font-semibold leading-none text-foreground">{pct}%</span>
-        </div>
+      </div>
+      <div className="flex flex-col leading-tight">
+        <span className="text-[11px] font-semibold text-foreground">Seu progresso</span>
+        <span className="text-[10px] text-muted-foreground">
+          {done}/{total} aulas
+        </span>
       </div>
     </div>
   );
