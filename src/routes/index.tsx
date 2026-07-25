@@ -1102,43 +1102,14 @@ export function TopBar() {
 function HeroBanner() {
   return (
     <section className="relative overflow-hidden border-b border-border">
-      {/* Altura responsiva com object-cover: preenche bonito e escala. A imagem nao tem texto,
-          entao o corte fica so nas bordas escuras — nada importante e perdido em nenhum device. */}
-      <div className="relative w-full h-[clamp(440px,42vw,620px)]">
+      {/* Banner estilo Kiwify: imagem completa (texto ja embutido na arte), exibida inteira
+          na proporcao nativa — w-full/h-auto, entao nunca corta e escala em todo device. */}
+      <div className="relative w-full">
         <img
           src="/banner-home.jpg"
           alt="LURE Growth"
-          className="absolute inset-0 h-full w-full object-cover object-[72%_center]"
+          className="block w-full h-auto"
         />
-        {/* Left-to-right readability mask so the text stays legible over the photo */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#050914]/85 via-[#050914]/35 to-transparent" />
-
-        {/* Text overlay */}
-        <div className="absolute inset-0 z-10 flex flex-col justify-center p-8 md:p-14">
-          <div className="max-w-xl">
-            {/* Logo: nuvem + "Lure Growth" */}
-            <div className="flex items-center gap-3">
-              <img
-                src={lureLogo.url}
-                alt="Lure Growth"
-                className="h-10 w-10 object-contain md:h-12 md:w-12"
-              />
-              <span className="font-display leading-none text-white text-2xl md:text-3xl">
-                <span className="font-normal">Lure</span>{" "}
-                <span className="font-bold">Growth</span>
-              </span>
-            </div>
-
-            <h1 className="mt-5 font-display font-bold leading-[1.02] tracking-tight text-white text-4xl md:text-5xl lg:text-6xl">
-              Bem-vindo ao <span className="text-white">LURE Growth</span>
-            </h1>
-
-            <p className="mt-4 max-w-lg leading-relaxed text-white/80 text-sm md:text-base">
-              A plataforma oficial da agência que já rodou +R$100M em mídia. Trilhas guiadas,
-              mentorias ao vivo e a comunidade que cresce junto com você.
-            </p>
-          </div>
-        </div>
       </div>
     </section>
   );
