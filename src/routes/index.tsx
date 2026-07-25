@@ -1114,35 +1114,28 @@ function HeroBanner() {
 
         {/* Text overlay — font sizes scale with the banner width (vw) so it always fits and never overflows */}
         <div className="absolute inset-0 z-10 flex flex-col justify-center pl-[5%] pr-[8%]">
-          <div className="max-w-[46%]">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[clamp(8px,0.85vw,11px)] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+          <div className="max-w-[50%]">
+            {/* Logo: nuvem + "Lure Growth" */}
+            <div className="flex items-center gap-[0.6vw]">
+              <img
+                src={lureLogo.url}
+                alt="Lure Growth"
+                className="object-contain w-[clamp(2rem,3.6vw,4rem)] h-[clamp(2rem,3.6vw,4rem)]"
+              />
+              <span className="font-display leading-none text-white text-[clamp(1.1rem,2.3vw,2.5rem)]">
+                <span className="font-normal">Lure</span>{" "}
+                <span className="font-bold">Growth</span>
               </span>
-              Área de Membros · Temporada 2026
             </div>
 
-            <h1 className="mt-[3%] font-display font-bold leading-[1.02] tracking-tight text-white text-[clamp(1.5rem,3.4vw,3.75rem)]">
+            <h1 className="mt-[4%] font-display font-bold leading-[1.02] tracking-tight text-white text-[clamp(1.6rem,3.6vw,4rem)]">
               Bem-vindo ao <span className="text-white">LURE Growth</span>
             </h1>
 
-            <p className="mt-[2.5%] leading-relaxed text-white/80 text-[clamp(0.72rem,1.05vw,1rem)]">
+            <p className="mt-[3%] leading-relaxed text-white/75 text-[clamp(0.72rem,1.05vw,1rem)]">
               A plataforma oficial da agência que já rodou +R$100M em mídia. Trilhas guiadas,
               mentorias ao vivo e a comunidade que cresce junto com você.
             </p>
-
-            <div className="mt-[3.5%] flex flex-wrap items-center gap-3">
-              <button className="group inline-flex items-center gap-2 rounded-xl gradient-gold px-[1.4vw] py-[0.9vw] font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:brightness-110 text-[clamp(0.72rem,0.95vw,0.875rem)]">
-                <Target className="h-[1em] w-[1em]" />
-                Fazer Diagnóstico
-                <ChevronRight className="h-[1em] w-[1em] transition group-hover:translate-x-1" />
-              </button>
-              <button className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-[1.4vw] py-[0.9vw] font-semibold text-white backdrop-blur transition hover:bg-white/15 text-[clamp(0.72rem,0.95vw,0.875rem)]">
-                <Play className="h-[1em] w-[1em] fill-current" />
-                Assistir tour
-              </button>
-            </div>
           </div>
         </div>
       </div>
