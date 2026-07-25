@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Lock, Mail, Eye, EyeOff, ArrowRight, Loader2, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
-import lureTeam from "@/assets/lure-team.jpg.asset.json";
 
 /** WhatsApp do administrador — botão "Fale com o administrador". */
 const ADMIN_WHATSAPP =
@@ -123,9 +122,9 @@ function LoginLayout() {
       {/* ─────────── Painel cinematográfico (desktop) ─────────── */}
       <aside className="lure-grain relative hidden overflow-hidden lg:block">
         <img
-          src={lureTeam.url}
+          src="/banner-home.jpg"
           alt="Time Lure Digital"
-          className="lure-kenburns absolute inset-0 h-full w-full object-cover"
+          className="lure-kenburns absolute inset-0 h-full w-full object-cover object-[78%_center]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#050914] via-[#050914]/70 to-[#050914]/25" />
         <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_80%_-10%,oklch(0.82_0.11_80/0.28),transparent_55%)]" />
