@@ -1102,37 +1102,38 @@ export function TopBar() {
 function HeroBanner() {
   return (
     <section className="relative overflow-hidden border-b border-border">
-      {/* Banner keeps the image's native ratio (2560x900) so it never gets cropped and scales on every screen */}
-      <div className="relative w-full">
+      {/* Altura responsiva com object-cover: preenche bonito e escala. A imagem nao tem texto,
+          entao o corte fica so nas bordas escuras — nada importante e perdido em nenhum device. */}
+      <div className="relative w-full h-[clamp(440px,42vw,620px)]">
         <img
           src="/banner-home.jpg"
           alt="LURE Growth"
-          className="block w-full h-auto"
+          className="absolute inset-0 h-full w-full object-cover object-center"
         />
         {/* Left-to-right readability mask so the text stays legible over the photo */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#050914]/80 via-[#050914]/25 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#050914]/85 via-[#050914]/35 to-transparent" />
 
-        {/* Text overlay — font sizes scale with the banner width (vw) so it always fits and never overflows */}
-        <div className="absolute inset-0 z-10 flex flex-col justify-center pl-[5%] pr-[8%]">
-          <div className="max-w-[50%]">
+        {/* Text overlay */}
+        <div className="absolute inset-0 z-10 flex flex-col justify-center p-8 md:p-14">
+          <div className="max-w-xl">
             {/* Logo: nuvem + "Lure Growth" */}
-            <div className="flex items-center gap-[0.6vw]">
+            <div className="flex items-center gap-3">
               <img
                 src={lureLogo.url}
                 alt="Lure Growth"
-                className="object-contain w-[clamp(2rem,3.6vw,4rem)] h-[clamp(2rem,3.6vw,4rem)]"
+                className="h-10 w-10 object-contain md:h-12 md:w-12"
               />
-              <span className="font-display leading-none text-white text-[clamp(1.1rem,2.3vw,2.5rem)]">
+              <span className="font-display leading-none text-white text-2xl md:text-3xl">
                 <span className="font-normal">Lure</span>{" "}
                 <span className="font-bold">Growth</span>
               </span>
             </div>
 
-            <h1 className="mt-[4%] font-display font-bold leading-[1.02] tracking-tight text-white text-[clamp(1.6rem,3.6vw,4rem)]">
+            <h1 className="mt-5 font-display font-bold leading-[1.02] tracking-tight text-white text-4xl md:text-5xl lg:text-6xl">
               Bem-vindo ao <span className="text-white">LURE Growth</span>
             </h1>
 
-            <p className="mt-[3%] leading-relaxed text-white/75 text-[clamp(0.72rem,1.05vw,1rem)]">
+            <p className="mt-4 max-w-lg leading-relaxed text-white/80 text-sm md:text-base">
               A plataforma oficial da agência que já rodou +R$100M em mídia. Trilhas guiadas,
               mentorias ao vivo e a comunidade que cresce junto com você.
             </p>
