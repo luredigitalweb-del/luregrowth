@@ -165,6 +165,8 @@ function CourseCard({ m, covers }: { m: EnrichedModule; covers: Record<string, s
         <img
           src={cover}
           alt={m.title}
+          loading="lazy"
+          decoding="async"
           className="pointer-events-none absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
       ) : (

@@ -95,6 +95,55 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
     ],
   },
   {
+    id: "social",
+    title: "SOCIAL SELLING",
+    subtitle: "Prospecção e autoridade nas redes",
+    modules: [
+      {
+        title: "Social Selling com Julia",
+        author: "Julia Farias",
+        lessons: 2,
+        progress: 0,
+        tag: "NOVO",
+        accent: "gold",
+        thumb: "/social-fundamentos.jpg",
+        moduleId: "ebdc9d1a-4369-4ffc-96f0-016ba3f78a85",
+      },
+      {
+        title: "Prospecção no LinkedIn",
+        author: "Julia Farias",
+        lessons: 10,
+        progress: 72,
+        tag: "NOVO",
+        accent: "gold",
+        thumb: "/social-posicionamento.jpg",
+      },
+      {
+        title: "Perfil Magnético B2B",
+        author: "Julia Farias",
+        lessons: 6,
+        progress: 35,
+        accent: "blue",
+        thumb: "/social-prospeccao.jpg",
+      },
+      {
+        title: "Copy para DMs",
+        author: "Time LURE",
+        lessons: 5,
+        progress: 0,
+        accent: "none",
+        thumb: "/social-pratica.jpg",
+      },
+      {
+        title: "Autoridade em Nicho",
+        author: "Julia Farias",
+        lessons: 8,
+        progress: 15,
+        accent: "green",
+      },
+    ],
+  },
+  {
     id: "call",
     title: "CALL DE VENDAS",
     subtitle: "Do primeiro contato ao fechamento",
@@ -139,47 +188,6 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
         progress: 0,
         accent: "blue",
         thumb: call4.url,
-      },
-    ],
-  },
-  {
-    id: "social",
-    title: "SOCIAL SELLING",
-    subtitle: "Prospecção e autoridade nas redes",
-    modules: [
-      {
-        title: "Social Selling com Julia",
-        author: "Julia Farias",
-        lessons: 2,
-        progress: 0,
-        tag: "NOVO",
-        accent: "gold",
-        thumb: "/julia-social.jpg",
-        moduleId: "ebdc9d1a-4369-4ffc-96f0-016ba3f78a85",
-      },
-      {
-        title: "Prospecção no LinkedIn",
-        author: "Julia Farias",
-        lessons: 10,
-        progress: 72,
-        tag: "NOVO",
-        accent: "gold",
-        thumb: "/prospeccao-linkedin.jpg",
-      },
-      {
-        title: "Perfil Magnético B2B",
-        author: "Julia Farias",
-        lessons: 6,
-        progress: 35,
-        accent: "blue",
-      },
-      { title: "Copy para DMs", author: "Time LURE", lessons: 5, progress: 0, accent: "none" },
-      {
-        title: "Autoridade em Nicho",
-        author: "Julia Farias",
-        lessons: 8,
-        progress: 15,
-        accent: "green",
       },
     ],
   },
@@ -1254,6 +1262,8 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
         <img
           src={thumb}
           alt={m.title}
+          loading="lazy"
+          decoding="async"
           className="pointer-events-none absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
       )}
