@@ -823,33 +823,30 @@ export function MobileTabBar({ current = "/" }: { current?: string }) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 px-4 lg:hidden"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
+      className="fixed inset-x-0 bottom-0 z-40 px-6 lg:hidden"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.6rem)" }}
     >
-      <ul className="flex items-stretch justify-between rounded-[26px] border border-white/10 bg-surface/85 px-2 py-2 shadow-[0_-10px_40px_-20px_oklch(0_0_0/0.9)] backdrop-blur-2xl">
+      {/* Degrade atras da barra: o conteudo some suavemente por baixo dela */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-28 bg-gradient-to-t from-background via-background/85 to-transparent"
+        aria-hidden
+      />
+      <ul className="mx-auto flex max-w-[360px] items-center justify-between rounded-full border border-white/10 bg-surface/75 px-1.5 py-1.5 shadow-[0_12px_32px_-10px_oklch(0_0_0/0.9)] backdrop-blur-2xl">
         {items.map((it) => {
           const active = it.to === current;
           return (
             <li key={it.label} className="flex-1">
               <Link
                 to={it.to}
-                className={`flex w-full flex-col items-center gap-1.5 rounded-2xl px-1 py-1.5 text-[11px] font-medium transition ${
-                  active ? "text-[var(--nav)]" : "text-muted-foreground"
+                title={it.label}
+                className={`flex w-full flex-col items-center gap-0.5 rounded-full py-1.5 transition ${
+                  active ? "text-[var(--nav)]" : "text-muted-foreground active:text-foreground"
                 }`}
               >
-                <span
-                  className={`grid h-10 w-10 place-items-center rounded-2xl transition ${
-                    active
-                      ? "bg-[var(--nav)]/15 shadow-[0_0_24px_-6px_var(--nav)]"
-                      : ""
-                  }`}
-                >
-                  <it.icon
-                    className="h-[22px] w-[22px]"
-                    strokeWidth={active ? 2 : 1.6}
-                  />
+                <it.icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.1 : 1.7} />
+                <span className="text-[9.5px] font-medium leading-none tracking-tight">
+                  {it.label}
                 </span>
-                {it.label}
               </Link>
             </li>
           );
