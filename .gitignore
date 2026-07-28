@@ -31,3 +31,6 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# imagens de origem soltas na raiz
+/[0-9].png
