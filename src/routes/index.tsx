@@ -668,161 +668,75 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-const MOBILE_SLIDES = [
-  {
-    eyebrow: "Bem-vindo ao",
-    title: "LURE Growth",
-    lines: [
-      "A plataforma oficial da agência que já rodou +R$100M em mídia.",
-      "Trilhas guiadas, mentorias ao vivo e a comunidade que cresce junto com você.",
-    ],
-    cta: "Explorar agora",
-    to: "/meus-cursos",
-    image: "/banner-boas-vindas.jpg",
-    video: "/banner-boas-vindas.mp4",
-  },
-  {
-    eyebrow: "Nova trilha",
-    title: "IA Aplicada",
-    lines: [
-      "Domine as ferramentas de IA que já estão dentro da operação da LURE.",
-      "Do primeiro prompt aos agentes que trabalham por você.",
-    ],
-    cta: "Começar trilha",
-    to: "/meus-cursos",
-    image: "/social-prospeccao.jpg",
-  },
-  {
-    eyebrow: "Toda quinta, ao vivo",
-    title: "Mentorias",
-    lines: [
-      "Encontros semanais com os sócios para destravar o seu negócio.",
-      "Traga o seu caso e saia com um plano.",
-    ],
-    cta: "Ver agenda",
-    to: "/comunidade",
-    image: "/social-pratica.jpg",
-  },
-] as const;
+/** Banner do mobile: um unico destaque fixo com o video de boas-vindas. */
+const MOBILE_HERO = {
+  eyebrow: "Bem-vindo ao",
+  title: "LURE Growth",
+  line: "A plataforma oficial da agência que já rodou +R$100M em mídia.",
+  cta: "Explorar agora",
+  to: "/meus-cursos",
+  poster: "/banner-boas-vindas.jpg",
+  video: "/banner-boas-vindas.mp4",
+} as const;
 
 function MobileHero() {
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const [index, setIndex] = useState(0);
-  const total = MOBILE_SLIDES.length;
-
-  const scrollTo = (i: number) => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const clamped = Math.max(0, Math.min(total - 1, i));
-    el.scrollTo({ left: clamped * el.clientWidth, behavior: "smooth" });
-  };
-
-  const onScroll = () => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const i = Math.round(el.scrollLeft / el.clientWidth);
-    if (i !== index) setIndex(i);
-  };
-
-  // Passa sozinho de slide; para assim que o dedo encosta. O slide com
-  // video fica mais tempo no ar para dar tempo de assistir.
-  const [paused, setPaused] = useState(false);
-  useEffect(() => {
-    if (paused) return;
-    const hasVideo = "video" in MOBILE_SLIDES[index] && !!MOBILE_SLIDES[index].video;
-    const t = window.setTimeout(() => {
-      const el = scrollerRef.current;
-      if (!el) return;
-      const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % total;
-      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
-    }, hasVideo ? 24000 : 6500);
-    return () => window.clearTimeout(t);
-  }, [paused, total, index]);
-
   return (
-    <section
-      className="px-4 pt-2"
-      onTouchStart={() => setPaused(true)}
-      onTouchEnd={() => setPaused(false)}
-    >
-      <div className="relative overflow-hidden rounded-[26px] border border-white/10 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
-        <div
-          ref={scrollerRef}
-          onScroll={onScroll}
-          className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+    <section className="relative overflow-hidden">
+      <video
+        src={MOBILE_HERO.video}
+        poster={MOBILE_HERO.poster}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        aria-hidden
+        className="absolute inset-y-0 -right-px h-full w-[calc(68%_+_2px)] object-cover object-center"
+      />
+
+      {/* Escurecimento do lado do texto */}
+      <div
+        className="compat-scrim-x pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(100deg, rgba(5,9,20,0.94) 0%, rgba(5,9,20,0.72) 38%, rgba(5,9,20,0.28) 62%, rgba(5,9,20,0) 88%)",
+        }}
+        aria-hidden
+      />
+      <div
+        className="compat-scrim-y pointer-events-none absolute inset-0"
+        style={{ background: "linear-gradient(to top, rgba(5,9,20,0.55) 0%, rgba(5,9,20,0) 40%)" }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 60% at 85% 60%, rgba(35,156,255,0.22), transparent 70%)",
+        }}
+        aria-hidden
+      />
+
+      <div className="relative flex min-h-[280px] flex-col justify-center px-6 py-9">
+        <h1 className="font-display text-[30px] font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+          <span className="block text-[18px] font-normal text-white/90">{MOBILE_HERO.eyebrow}</span>
+          {MOBILE_HERO.title}
+        </h1>
+        <p className="mt-3.5 max-w-[58%] text-[12.5px] leading-relaxed text-white/70">
+          {MOBILE_HERO.line}
+        </p>
+        <Link
+          to={MOBILE_HERO.to}
+          search={{ tab: "andamento" as const }}
+          className="group relative mt-6 inline-flex w-fit items-center gap-2 overflow-hidden rounded-full gradient-blue px-5 py-3 text-[13.5px] font-semibold text-white shadow-[0_10px_28px_-10px_var(--nav)] transition active:scale-95"
         >
-          {MOBILE_SLIDES.map((slide, i) => (
-            <article key={slide.title} className="relative w-full flex-shrink-0 snap-center">
-              {/* Video (ou foto) ocupando a direita, esmaecendo para o texto respirar */}
-              {"video" in slide && slide.video ? (
-                <video
-                  src={slide.video}
-                  poster={slide.image}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="metadata"
-                  aria-hidden
-                  className="absolute inset-y-0 right-0 h-full w-[68%] object-cover object-center"
-                />
-              ) : (
-                <img
-                  src={slide.image}
-                  alt=""
-                  aria-hidden
-                  loading={i === 0 ? "eager" : "lazy"}
-                  decoding="async"
-                  className="absolute inset-y-0 right-0 h-full w-[68%] object-cover object-center"
-                />
-              )}
-              <div className="compat-scrim-x absolute inset-0 bg-gradient-to-r from-[#050914] via-[#050914]/85 to-transparent" />
-              <div className="compat-scrim-y absolute inset-0 bg-gradient-to-t from-[#050914] via-transparent to-transparent" />
-              <div
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  background:
-                    "radial-gradient(ellipse 70% 60% at 85% 60%, rgba(0, 136, 242, 0.35), transparent 70%)",
-                }}
-              />
-
-              <div className="relative flex min-h-[300px] flex-col justify-center px-6 py-9">
-                <h1 className="font-display text-[30px] font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
-                  <span className="block text-[19px] font-normal text-white/90">{slide.eyebrow}</span>
-                  {slide.title}
-                </h1>
-                <div className="mt-4 max-w-[62%] space-y-2.5">
-                  {slide.lines.map((l) => (
-                    <p key={l} className="text-[12.5px] leading-relaxed text-white/70">
-                      {l}
-                    </p>
-                  ))}
-                </div>
-                <Link
-                  to={slide.to}
-                  className="mt-6 inline-flex w-fit items-center gap-2.5 rounded-full gradient-blue px-5 py-3 text-[14px] font-semibold text-white shadow-[0_12px_30px_-10px_var(--nav)] transition active:scale-95"
-                >
-                  {slide.cta} <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        {/* Indicadores */}
-        <div className="pointer-events-none absolute bottom-4 left-0 right-0 flex items-center justify-center gap-1.5">
-          {MOBILE_SLIDES.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              aria-label={`Ir para o slide ${i + 1}`}
-              onClick={() => scrollTo(i)}
-              className={`pointer-events-auto h-1.5 rounded-full transition-all duration-300 ${
-                i === index ? "w-7 bg-white" : "w-4 bg-white/30"
-              }`}
-            />
-          ))}
-        </div>
+          <span
+            className="diag-sweep pointer-events-none absolute inset-y-0 -left-6 w-12 bg-white/30 blur-md"
+            aria-hidden
+          />
+          <span className="relative">{MOBILE_HERO.cta}</span>
+          <ArrowRight className="relative h-3.5 w-3.5" />
+        </Link>
       </div>
     </section>
   );
@@ -837,29 +751,24 @@ export function MobileTabBar({ current = "/" }: { current?: string }) {
   ] as const;
 
   return (
-    <nav
-      className="fixed inset-x-0 bottom-0 z-40 px-6 lg:hidden"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.6rem)" }}
-    >
-      {/* Degrade atras da barra: o conteudo some suavemente por baixo dela */}
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-28 bg-gradient-to-t from-background via-background/85 to-transparent"
-        aria-hidden
-      />
-      <ul className="mx-auto flex max-w-[360px] items-center justify-between rounded-full border border-white/10 bg-surface/75 px-1.5 py-1.5 shadow-[0_12px_32px_-10px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-[#090E1A] lg:hidden">
+      <ul
+        className="flex items-stretch"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.35rem)" }}
+      >
         {items.map((it) => {
           const active = it.to === current;
           return (
             <li key={it.label} className="flex-1">
               <Link
                 to={it.to}
-                title={it.label}
-                className={`flex w-full flex-col items-center gap-0.5 rounded-full py-1.5 transition ${
-                  active ? "text-[var(--nav)]" : "text-muted-foreground active:text-foreground"
+                {...(it.to === "/meus-cursos" ? { search: { tab: "andamento" as const } } : {})}
+                className={`flex w-full flex-col items-center gap-1 pb-1.5 pt-2.5 ${
+                  active ? "text-[var(--nav)]" : "text-muted-foreground"
                 }`}
               >
-                <it.icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.1 : 1.7} />
-                <span className="text-[9.5px] font-medium leading-none tracking-tight">
+                <it.icon className="h-[21px] w-[21px]" strokeWidth={active ? 2.1 : 1.6} />
+                <span className="text-[10px] font-medium leading-none tracking-tight">
                   {it.label}
                 </span>
               </Link>
@@ -1412,7 +1321,7 @@ export function MobileModuleCard({
       className="lure-rise group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface/60 transition active:scale-[0.98]"
       style={{ "--d": `${index * 70}ms` } as React.CSSProperties}
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-black">
+      <div className="relative aspect-[9/16] w-full overflow-hidden bg-black">
         {thumb ? (
           <img
             src={thumb}
@@ -1435,11 +1344,14 @@ export function MobileModuleCard({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col px-3.5 pb-3.5 pt-3">
-        <h3 className="line-clamp-2 text-[15px] font-medium leading-snug text-foreground">
-          {m.title}
-        </h3>
-        <div className="mt-3 flex items-center gap-2.5">
+      <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5">
+        {/* A capa ja traz o nome do curso; o texto so entra quando nao ha capa */}
+        {!thumb && (
+          <h3 className="line-clamp-2 text-[15px] font-medium leading-snug text-foreground">
+            {m.title}
+          </h3>
+        )}
+        <div className="mt-auto flex items-center gap-2.5 pt-2">
           <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
             {m.progress}%
           </span>
