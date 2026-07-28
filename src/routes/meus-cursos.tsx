@@ -203,9 +203,12 @@ function CourseCard({ m, covers }: { m: EnrichedModule; covers: Record<string, s
             `${m.progress}% concluído`
           )}
         </span>
-        <h3 className="font-display text-xl font-bold leading-snug drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
-          {m.title}
-        </h3>
+        {/* A capa ja traz o titulo escrito; so mostramos texto quando nao ha capa. */}
+        {!cover && (
+          <h3 className="font-display text-xl font-bold leading-snug drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+            {m.title}
+          </h3>
+        )}
 
         <div className="mt-auto flex items-center justify-between pt-4 text-xs text-muted-foreground">
           <span className="truncate">{m.author}</span>

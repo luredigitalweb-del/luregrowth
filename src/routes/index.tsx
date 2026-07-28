@@ -1302,7 +1302,8 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
             {m.tag}
           </span>
         )}
-        <h3 className="font-display text-xl font-bold leading-snug">{m.title}</h3>
+        {/* A capa ja traz o titulo escrito; so mostramos texto quando nao ha capa. */}
+        {!thumb && <h3 className="font-display text-xl font-bold leading-snug">{m.title}</h3>}
 
         <div className="mt-auto flex items-center justify-between pt-4 text-xs text-muted-foreground">
           <span className="truncate">{m.author}</span>
