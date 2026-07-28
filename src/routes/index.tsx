@@ -693,13 +693,13 @@ export function MobileTabBar() {
           <li key={it.label} className="flex-1">
             <button
               className={`flex w-full flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition ${
-                it.active ? "text-[var(--nav)]" : "text-muted-foreground hover:text-foreground"
+                it.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <span
                 className={`grid h-9 w-9 place-items-center rounded-full transition ${
                   it.active
-                    ? "bg-[var(--nav)]/15 ring-1 ring-[var(--nav)]/40 shadow-[0_0_20px_-4px_var(--nav)]"
+                    ? "bg-primary/15 ring-1 ring-primary/40 shadow-[0_0_20px_-4px_var(--primary)]"
                     : ""
                 }`}
               >
@@ -846,15 +846,15 @@ function NavGroup({
           <>
             {it.active && (
               <>
-                <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-[var(--nav)]/25 to-[var(--nav)]/5 ring-1 ring-[var(--nav)]/30" />
+                <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/25 to-primary/5 ring-1 ring-primary/30" />
                 {open && (
-                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--nav)] shadow-[0_0_16px_-2px_var(--nav)]" />
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_16px_-2px_var(--primary)]" />
                 )}
               </>
             )}
             <it.icon
               strokeWidth={1.6}
-              className={`relative h-[19px] w-[19px] shrink-0 ${it.active ? "text-[var(--nav)]" : ""}`}
+              className={`relative h-[19px] w-[19px] shrink-0 ${it.active ? "text-primary" : ""}`}
             />
             {open && <span className="relative">{it.label}</span>}
           </>
@@ -865,7 +865,7 @@ function NavGroup({
             : "h-11 w-11 items-center justify-center rounded-xl"
         } ${
           it.active
-            ? "text-[var(--nav)]"
+            ? "text-primary"
             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
         }`;
 
@@ -1034,12 +1034,12 @@ function ProgressPill() {
   return (
     <div
       title={`${done} de ${total} aulas concluídas`}
-      className="group relative hidden items-center gap-3 overflow-hidden rounded-full border border-[var(--nav)]/25 bg-surface/80 py-1.5 pl-1.5 pr-4 shadow-sm backdrop-blur-md transition hover:border-[var(--nav)]/55 hover:shadow-[0_0_24px_-8px_var(--nav)] sm:flex"
+      className="group relative hidden items-center gap-3 overflow-hidden rounded-full border border-primary/25 bg-surface/80 py-1.5 pl-1.5 pr-4 shadow-sm backdrop-blur-md transition hover:border-primary/55 hover:shadow-[0_0_24px_-8px_var(--primary)] sm:flex"
     >
       {/* brilho azul que acompanha o progresso */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 bg-gradient-to-r from-[var(--nav)]/22 to-transparent transition-all duration-700"
+        className="pointer-events-none absolute inset-y-0 left-0 bg-gradient-to-r from-primary/22 to-transparent transition-all duration-700"
         style={{ width: `${Math.max(pct, 8)}%` }}
       />
       <div className="relative h-10 w-10 shrink-0">
@@ -1064,13 +1064,13 @@ function ProgressPill() {
             strokeDashoffset={offset}
             style={{
               transition: "stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
-              filter: "drop-shadow(0 0 4px var(--nav))",
+              filter: "drop-shadow(0 0 4px var(--primary))",
             }}
           />
           <defs>
             <linearGradient id="lureProgress" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#7DD3FC" />
-              <stop offset="100%" stopColor="#2563EB" />
+              <stop offset="0%" stopColor="#F6CE86" />
+              <stop offset="100%" stopColor="#DE9F44" />
             </linearGradient>
           </defs>
         </svg>
