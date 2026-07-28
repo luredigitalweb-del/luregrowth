@@ -3,7 +3,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/lib/supabase";
 import {
   Play,
-  Target,
   Search,
   Bell,
   ChevronRight,
@@ -24,13 +23,11 @@ import {
   ShieldCheck,
   Menu,
   X,
-  ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Avatar, initialsOf } from "@/components/avatar";
 import { openSettings } from "@/components/profile-settings-modal";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
-import lureTeam from "@/assets/lure-team.jpg.asset.json";
 import callAmanda from "@/assets/call-vendas-1.png.asset.json";
 import callFelipe from "@/assets/call-vendas-felipe.png.asset.json";
 import callGustavo from "@/assets/call-vendas-gustavo.png.asset.json";
@@ -670,161 +667,59 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-const MOBILE_SLIDES = [
-  {
-    eyebrow: "Bem-vindo ao",
-    title: "LURE Growth",
-    lines: [
-      "A plataforma oficial da agência que já rodou +R$100M em mídia.",
-      "Trilhas guiadas, mentorias ao vivo e a comunidade que cresce junto com você.",
-    ],
-    cta: "Explorar agora",
-    to: "/meus-cursos",
-    image: "/banner-boas-vindas.jpg",
-    video: "/banner-boas-vindas.mp4",
-  },
-  {
-    eyebrow: "Nova trilha",
-    title: "IA Aplicada",
-    lines: [
-      "Domine as ferramentas de IA que já estão dentro da operação da LURE.",
-      "Do primeiro prompt aos agentes que trabalham por você.",
-    ],
-    cta: "Começar trilha",
-    to: "/meus-cursos",
-    image: "/social-prospeccao.jpg",
-  },
-  {
-    eyebrow: "Toda quinta, ao vivo",
-    title: "Mentorias",
-    lines: [
-      "Encontros semanais com os sócios para destravar o seu negócio.",
-      "Traga o seu caso e saia com um plano.",
-    ],
-    cta: "Ver agenda",
-    to: "/comunidade",
-    image: "/social-pratica.jpg",
-  },
-] as const;
-
+/** Banner do mobile: o video de boas-vindas ocupando a largura toda da tela. */
 function MobileHero() {
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const [index, setIndex] = useState(0);
-  const total = MOBILE_SLIDES.length;
-
-  const scrollTo = (i: number) => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const clamped = Math.max(0, Math.min(total - 1, i));
-    el.scrollTo({ left: clamped * el.clientWidth, behavior: "smooth" });
-  };
-
-  const onScroll = () => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const i = Math.round(el.scrollLeft / el.clientWidth);
-    if (i !== index) setIndex(i);
-  };
-
-  // Passa sozinho de slide; para assim que o dedo encosta. O slide com
-  // video fica mais tempo no ar para dar tempo de assistir.
-  const [paused, setPaused] = useState(false);
-  useEffect(() => {
-    if (paused) return;
-    const hasVideo = "video" in MOBILE_SLIDES[index] && !!MOBILE_SLIDES[index].video;
-    const t = window.setTimeout(() => {
-      const el = scrollerRef.current;
-      if (!el) return;
-      const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % total;
-      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
-    }, hasVideo ? 24000 : 6500);
-    return () => window.clearTimeout(t);
-  }, [paused, total, index]);
-
   return (
-    <section
-      className="px-4 pt-2"
-      onTouchStart={() => setPaused(true)}
-      onTouchEnd={() => setPaused(false)}
-    >
-      <div className="relative overflow-hidden rounded-[26px] border border-white/10 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
-        <div
-          ref={scrollerRef}
-          onScroll={onScroll}
-          className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+    <section className="relative -mt-3 w-full">
+      <video
+        src="/banner-boas-vindas.mp4"
+        poster="/banner-boas-vindas.jpg"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        aria-label="Boas-vindas à LURE Growth"
+        className="block aspect-video w-full object-cover"
+      />
+
+      {/* Brilho azul da marca subindo do rodape do video */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-[radial-gradient(ellipse_80%_100%_at_50%_120%,rgba(35,156,255,0.45),transparent_70%)] mix-blend-screen"
+        aria-hidden
+      />
+
+      {/* Base escurecida para o conteudo seguinte emendar sem corte seco */}
+      <div
+        className="compat-scrim-y pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background via-background/70 to-transparent"
+        aria-hidden
+      />
+
+      {/* Mensagem de boas-vindas */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-5">
+        <p
+          className="lure-rise text-[11px] font-semibold uppercase tracking-[0.3em] text-[var(--nav)]"
+          style={{ "--d": "150ms", textShadow: "0 0 18px rgba(35,156,255,0.75)" } as React.CSSProperties}
         >
-          {MOBILE_SLIDES.map((slide, i) => (
-            <article key={slide.title} className="relative w-full flex-shrink-0 snap-center">
-              {/* Video (ou foto) ocupando a direita, esmaecendo para o texto respirar */}
-              {"video" in slide && slide.video ? (
-                <video
-                  src={slide.video}
-                  poster={slide.image}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="metadata"
-                  aria-hidden
-                  className="absolute inset-y-0 right-0 h-full w-[68%] object-cover object-center"
-                />
-              ) : (
-                <img
-                  src={slide.image}
-                  alt=""
-                  aria-hidden
-                  loading={i === 0 ? "eager" : "lazy"}
-                  decoding="async"
-                  className="absolute inset-y-0 right-0 h-full w-[68%] object-cover object-center"
-                />
-              )}
-              <div className="compat-scrim-x absolute inset-0 bg-gradient-to-r from-[#050914] via-[#050914]/85 to-transparent" />
-              <div className="compat-scrim-y absolute inset-0 bg-gradient-to-t from-[#050914] via-transparent to-transparent" />
-              <div
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  background:
-                    "radial-gradient(ellipse 70% 60% at 85% 60%, rgba(0, 136, 242, 0.35), transparent 70%)",
-                }}
-              />
-
-              <div className="relative flex min-h-[300px] flex-col justify-center px-6 py-9">
-                <h1 className="font-display text-[30px] font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
-                  <span className="block text-[19px] font-normal text-white/90">{slide.eyebrow}</span>
-                  {slide.title}
-                </h1>
-                <div className="mt-4 max-w-[62%] space-y-2.5">
-                  {slide.lines.map((l) => (
-                    <p key={l} className="text-[12.5px] leading-relaxed text-white/70">
-                      {l}
-                    </p>
-                  ))}
-                </div>
-                <Link
-                  to={slide.to}
-                  className="mt-6 inline-flex w-fit items-center gap-2.5 rounded-full gradient-blue px-5 py-3 text-[14px] font-semibold text-white shadow-[0_12px_30px_-10px_var(--nav)] transition active:scale-95"
-                >
-                  {slide.cta} <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        {/* Indicadores */}
-        <div className="pointer-events-none absolute bottom-4 left-0 right-0 flex items-center justify-center gap-1.5">
-          {MOBILE_SLIDES.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              aria-label={`Ir para o slide ${i + 1}`}
-              onClick={() => scrollTo(i)}
-              className={`pointer-events-auto h-1.5 rounded-full transition-all duration-300 ${
-                i === index ? "w-7 bg-white" : "w-4 bg-white/30"
-              }`}
-            />
-          ))}
-        </div>
+          Bem-vindo
+        </p>
+        <h1
+          className="lure-rise mt-1.5 font-display text-[26px] font-bold leading-[1.1] tracking-tight"
+          style={{ "--d": "300ms", textShadow: "0 2px 18px rgba(0,0,0,0.85)" } as React.CSSProperties}
+        >
+          Que bom ter você na{" "}
+          <span
+            className="bg-gradient-to-r from-[#7DD3FC] via-[#239CFF] to-[#2275E8] bg-clip-text text-transparent"
+            style={{ filter: "drop-shadow(0 0 14px rgba(35,156,255,0.55))" }}
+          >
+            LURE Growth
+          </span>
+        </h1>
+        <div
+          className="lure-rise lure-hairline-blue mt-3 h-px w-28"
+          style={{ "--d": "520ms" } as React.CSSProperties}
+          aria-hidden
+        />
       </div>
     </section>
   );
