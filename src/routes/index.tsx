@@ -680,7 +680,8 @@ const MOBILE_SLIDES = [
     ],
     cta: "Explorar agora",
     to: "/meus-cursos",
-    image: "/banner-home.jpg",
+    image: "/banner-boas-vindas.jpg",
+    video: "/banner-boas-vindas.mp4",
   },
   {
     eyebrow: "Nova trilha",
@@ -725,18 +726,20 @@ function MobileHero() {
     if (i !== index) setIndex(i);
   };
 
-  // Passa sozinho de slide; para assim que o dedo encosta.
+  // Passa sozinho de slide; para assim que o dedo encosta. O slide com
+  // video fica mais tempo no ar para dar tempo de assistir.
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     if (paused) return;
-    const t = window.setInterval(() => {
+    const hasVideo = "video" in MOBILE_SLIDES[index] && !!MOBILE_SLIDES[index].video;
+    const t = window.setTimeout(() => {
       const el = scrollerRef.current;
       if (!el) return;
       const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % total;
       el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
-    }, 6000);
-    return () => window.clearInterval(t);
-  }, [paused, total]);
+    }, hasVideo ? 24000 : 6500);
+    return () => window.clearTimeout(t);
+  }, [paused, total, index]);
 
   return (
     <section
@@ -752,15 +755,29 @@ function MobileHero() {
         >
           {MOBILE_SLIDES.map((slide, i) => (
             <article key={slide.title} className="relative w-full flex-shrink-0 snap-center">
-              {/* Foto ocupando a direita, esmaecendo para o texto respirar */}
-              <img
-                src={slide.image}
-                alt=""
-                aria-hidden
-                loading={i === 0 ? "eager" : "lazy"}
-                decoding="async"
-                className="absolute inset-y-0 right-0 h-full w-[68%] object-cover object-center"
-              />
+              {/* Video (ou foto) ocupando a direita, esmaecendo para o texto respirar */}
+              {"video" in slide && slide.video ? (
+                <video
+                  src={slide.video}
+                  poster={slide.image}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                  aria-hidden
+                  className="absolute inset-y-0 right-0 h-full w-[68%] object-cover object-center"
+                />
+              ) : (
+                <img
+                  src={slide.image}
+                  alt=""
+                  aria-hidden
+                  loading={i === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  className="absolute inset-y-0 right-0 h-full w-[68%] object-cover object-center"
+                />
+              )}
               <div className="compat-scrim-x absolute inset-0 bg-gradient-to-r from-[#050914] via-[#050914]/85 to-transparent" />
               <div className="compat-scrim-y absolute inset-0 bg-gradient-to-t from-[#050914] via-transparent to-transparent" />
               <div

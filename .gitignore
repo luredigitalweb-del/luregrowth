@@ -34,3 +34,7 @@ dist-ssr
 
 # imagens de origem soltas na raiz
 /[0-9].png
+
+# videos de origem soltos na raiz
+/*.mp4
+/*.mov
