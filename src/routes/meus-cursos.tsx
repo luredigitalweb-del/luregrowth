@@ -10,7 +10,7 @@ import {
   type Module,
 } from "./index";
 import { supabase } from "@/lib/supabase";
-import lureTeam from "@/assets/lure-team.jpg.asset.json";
+import lureLogo from "@/assets/lure-logo-large.png.asset.json";
 
 const coverKey = (sectionId: string, title: string) => `${sectionId}|${title.trim()}`;
 
@@ -24,13 +24,13 @@ export const Route = createFileRoute("/meus-cursos")({
     ],
   }),
   validateSearch: (s: Record<string, unknown>) => ({
-    tab: (s.tab as TabKey) ?? "todos",
+    tab: (s.tab as TabKey) ?? "andamento",
   }),
   component: MeusCursosPage,
 });
 
 type EnrichedModule = Module & { sectionId: string; sectionTitle: string };
-type TabKey = "todos" | "andamento" | "concluidos" | "certificados";
+type TabKey = "andamento" | "concluidos" | "certificados";
 
 // Overrides de demo: garante alguns concluídos + destaques em andamento
 const DEMO_OVERRIDES: Record<string, number> = {
@@ -84,13 +84,7 @@ function MeusCursosPage() {
 
   const inProgress = all.filter((m) => m.progress > 0 && m.progress < 100);
   const completed = all.filter((m) => m.progress >= 100);
-  const enrolled = all.filter((m) => m.progress > 0); // "meus cursos" = os que eu estou fazendo
-
-  const visible =
-    tab === "andamento" ? inProgress
-    : tab === "concluidos" ? completed
-    : tab === "certificados" ? completed
-    : enrolled;
+  const visible = tab === "andamento" ? inProgress : completed;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -115,9 +109,6 @@ function MeusCursosPage() {
 
               {/* Tabs */}
               <div className="mt-6 flex flex-wrap items-center gap-2">
-                <TabChip active={tab === "todos"} onClick={() => setTab("todos")}>
-                  Meus cursos <Count n={enrolled.length} />
-                </TabChip>
                 <TabChip active={tab === "andamento"} onClick={() => setTab("andamento")}>
                   Em andamento <Count n={inProgress.length} />
                 </TabChip>
@@ -160,61 +151,74 @@ function MeusCursosPage() {
 
 function CourseCard({ m, covers }: { m: EnrichedModule; covers: Record<string, string> }) {
   const done = m.progress >= 100;
-  // Capa real do banco > thumb do código > foto padrão do time.
-  const cover = covers[coverKey(m.sectionId, m.title)] ?? m.thumb ?? lureTeam.url;
+  // Capa real do banco > thumb do código. Sem nenhuma das duas, cai no
+  // fundo preto com a logo (igual aos cards da home).
+  const cover = covers[coverKey(m.sectionId, m.title)] ?? m.thumb;
   return (
     <Link
       to="/curso/$slug"
       params={{ slug: slugify(m.title) }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--shadow-card)]"
+      className="group relative flex h-[440px] flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-1 hover:border-[var(--nav)]/50 hover:shadow-[var(--shadow-card)]"
     >
-      {/* Thumbnail */}
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-surface">
+      {/* Banner cobrindo o card inteiro, igual aos cards da home */}
+      {cover ? (
         <img
           src={cover}
           alt={m.title}
-          className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/20 to-transparent" />
-        {done ? (
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur">
-            <CheckCircle2 className="h-3 w-3" /> Concluído
+      ) : (
+        <>
+          <div className="pointer-events-none absolute inset-0 bg-black" />
+          <div className="pointer-events-none absolute inset-0 grid place-items-center">
+            <img
+              src={lureLogo.url}
+              alt="LURE"
+              className="h-20 w-20 object-contain opacity-90 transition duration-500 group-hover:scale-105"
+            />
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-[radial-gradient(ellipse_70%_90%_at_50%_100%,oklch(0.62_0.19_250/0.28),transparent_70%)]" />
+        </>
+      )}
+
+      {/* Hover play */}
+      <div className="absolute right-5 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/70 opacity-0 backdrop-blur transition group-hover:opacity-100">
+        <Play className="h-4 w-4 fill-[var(--nav)] text-[var(--nav)]" />
+      </div>
+
+      {/* Header */}
+      <div className="relative flex flex-1 flex-col p-6">
+        <span
+          className={`mb-4 inline-flex w-fit items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider backdrop-blur ${
+            done ? "bg-emerald-500/90 text-white" : "bg-background/70 text-foreground"
+          }`}
+        >
+          {done ? (
+            <>
+              <CheckCircle2 className="h-3 w-3" /> Concluído
+            </>
+          ) : (
+            `${m.progress}% concluído`
+          )}
+        </span>
+        <h3 className="font-display text-xl font-bold leading-snug drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+          {m.title}
+        </h3>
+
+        <div className="mt-auto flex items-center justify-between pt-4 text-xs text-muted-foreground">
+          <span className="truncate">{m.author}</span>
+          <span className="flex shrink-0 items-center gap-1">
+            <Play className="h-3 w-3" /> {m.lessons} aulas
           </span>
-        ) : (
-          <span className="absolute left-3 top-3 rounded-full bg-background/70 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
-            {m.progress}%
-          </span>
-        )}
-        <div className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-background/70 text-primary opacity-0 backdrop-blur transition group-hover:opacity-100">
-          <Play className="h-4 w-4 fill-current" />
         </div>
       </div>
 
-      {/* Body */}
-      <div className="flex flex-1 flex-col p-4">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          {m.sectionTitle}
-        </div>
-        <h3 className="mt-1.5 line-clamp-2 font-display text-[15px] font-bold leading-snug">
-          {m.title}
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">{m.author}</p>
-
-        {/* Progress */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className={done ? "font-semibold text-emerald-400" : "font-semibold text-foreground"}>
-              {m.progress}% concluído
-            </span>
-            <span className="text-muted-foreground">{m.lessons} aulas</span>
-          </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-background">
-            <div
-              className={`h-full ${done ? "bg-emerald-400" : "bg-foreground/70"}`}
-              style={{ width: `${m.progress}%` }}
-            />
-          </div>
-        </div>
+      {/* Barra de progresso colada na base */}
+      <div className="relative h-1.5 w-full bg-background/70">
+        <div
+          className={`h-full ${done ? "bg-emerald-400" : "bg-[var(--nav)]"}`}
+          style={{ width: `${m.progress}%` }}
+        />
       </div>
     </Link>
   );

@@ -8,10 +8,10 @@ import {
   Bell,
   ChevronRight,
   ChevronLeft,
-  LayoutGrid,
-  GraduationCap,
+  House,
+  BookOpen,
   Users,
-  Award,
+  ScrollText,
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
@@ -19,8 +19,8 @@ import {
   CreditCard,
   LogOut,
   Crown,
-  LifeBuoy,
-  Hexagon,
+  Headphones,
+  Gauge,
   ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -678,8 +678,8 @@ function MobileHero() {
 
 export function MobileTabBar() {
   const items = [
-    { icon: LayoutGrid, label: "Início", active: true },
-    { icon: GraduationCap, label: "Cursos" },
+    { icon: House, label: "Início", active: true },
+    { icon: BookOpen, label: "Cursos" },
     { icon: Users, label: "Comunidade" },
     { icon: User, label: "Perfil" },
   ];
@@ -693,13 +693,13 @@ export function MobileTabBar() {
           <li key={it.label} className="flex-1">
             <button
               className={`flex w-full flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition ${
-                it.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                it.active ? "text-[var(--nav)]" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <span
                 className={`grid h-9 w-9 place-items-center rounded-full transition ${
                   it.active
-                    ? "bg-primary/15 ring-1 ring-primary/40 shadow-[0_0_20px_-4px_oklch(0.78_0.14_70/0.55)]"
+                    ? "bg-[var(--nav)]/15 ring-1 ring-[var(--nav)]/40 shadow-[0_0_20px_-4px_var(--nav)]"
                     : ""
                 }`}
               >
@@ -724,14 +724,14 @@ export function Sidebar({
   current?: string;
 }) {
   const primary = [
-    { icon: LayoutGrid, label: "Início", to: "/" },
-    { icon: GraduationCap, label: "Meus cursos", to: "/meus-cursos" },
-    { icon: Hexagon, label: "Diagnóstico", to: "/diagnostico" },
-    { icon: Award, label: "Certificados", to: "/meus-cursos" },
+    { icon: House, label: "Início", to: "/" },
+    { icon: BookOpen, label: "Meus cursos", to: "/meus-cursos" },
+    { icon: Gauge, label: "Diagnóstico", to: "/diagnostico" },
+    { icon: ScrollText, label: "Certificados", to: "/meus-cursos" },
   ];
   const secondary = [
     {
-      icon: LifeBuoy,
+      icon: Headphones,
       label: "Suporte",
       href: "https://wa.me/5585991112424?text=Ol%C3%A1%2C%20estou%20na%20%C3%81rea%20de%20Membros%20e%20preciso%20de%20ajuda",
     },
@@ -824,7 +824,7 @@ function NavGroup({
   label: string;
   open: boolean;
   items: {
-    icon: typeof LayoutGrid;
+    icon: typeof House;
     label: string;
     active?: boolean;
     href?: string;
@@ -846,14 +846,15 @@ function NavGroup({
           <>
             {it.active && (
               <>
-                <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5" />
+                <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-[var(--nav)]/25 to-[var(--nav)]/5 ring-1 ring-[var(--nav)]/30" />
                 {open && (
-                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-glow" />
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--nav)] shadow-[0_0_16px_-2px_var(--nav)]" />
                 )}
               </>
             )}
             <it.icon
-              className={`relative h-[18px] w-[18px] shrink-0 ${it.active ? "text-primary" : ""}`}
+              strokeWidth={1.6}
+              className={`relative h-[19px] w-[19px] shrink-0 ${it.active ? "text-[var(--nav)]" : ""}`}
             />
             {open && <span className="relative">{it.label}</span>}
           </>
@@ -864,7 +865,7 @@ function NavGroup({
             : "h-11 w-11 items-center justify-center rounded-xl"
         } ${
           it.active
-            ? "text-primary"
+            ? "text-[var(--nav)]"
             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
         }`;
 
@@ -1033,38 +1034,57 @@ function ProgressPill() {
   return (
     <div
       title={`${done} de ${total} aulas concluídas`}
-      className="hidden items-center gap-2.5 rounded-full border border-border bg-surface py-1.5 pl-1.5 pr-4 shadow-sm transition hover:border-primary/40 sm:flex"
+      className="group relative hidden items-center gap-3 overflow-hidden rounded-full border border-[var(--nav)]/25 bg-surface/80 py-1.5 pl-1.5 pr-4 shadow-sm backdrop-blur-md transition hover:border-[var(--nav)]/55 hover:shadow-[0_0_24px_-8px_var(--nav)] sm:flex"
     >
-      <div className="relative h-9 w-9 shrink-0">
-        <svg viewBox="0 0 40 40" className="h-9 w-9 -rotate-90">
-          <circle cx="20" cy="20" r={r} fill="none" strokeWidth="4" className="stroke-border" />
+      {/* brilho azul que acompanha o progresso */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 bg-gradient-to-r from-[var(--nav)]/22 to-transparent transition-all duration-700"
+        style={{ width: `${Math.max(pct, 8)}%` }}
+      />
+      <div className="relative h-10 w-10 shrink-0">
+        <svg viewBox="0 0 40 40" className="h-10 w-10 -rotate-90">
+          <circle
+            cx="20"
+            cy="20"
+            r={r}
+            fill="none"
+            strokeWidth="3.5"
+            className="stroke-foreground/12"
+          />
           <circle
             cx="20"
             cy="20"
             r={r}
             fill="none"
             stroke="url(#lureProgress)"
-            strokeWidth="4"
+            strokeWidth="3.5"
             strokeLinecap="round"
             strokeDasharray={circ}
             strokeDashoffset={offset}
-            style={{ transition: "stroke-dashoffset 0.6s ease" }}
+            style={{
+              transition: "stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
+              filter: "drop-shadow(0 0 4px var(--nav))",
+            }}
           />
           <defs>
             <linearGradient id="lureProgress" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#F6CE86" />
-              <stop offset="100%" stopColor="#DE9F44" />
+              <stop offset="0%" stopColor="#7DD3FC" />
+              <stop offset="100%" stopColor="#2563EB" />
             </linearGradient>
           </defs>
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground">
+        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold tabular-nums text-foreground">
           {pct}%
         </span>
       </div>
-      <div className="flex flex-col leading-tight">
-        <span className="text-[11px] font-semibold text-foreground">Seu progresso</span>
-        <span className="text-[10px] text-muted-foreground">
-          {done}/{total} aulas
+      <div className="relative flex flex-col leading-tight">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          Seu progresso
+        </span>
+        <span className="text-[12px] font-semibold tabular-nums text-foreground">
+          {done}
+          <span className="text-muted-foreground">/{total} aulas</span>
         </span>
       </div>
     </div>

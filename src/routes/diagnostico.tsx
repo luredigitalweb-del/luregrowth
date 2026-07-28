@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Hexagon, ArrowRight, Layers, Users, MessageSquare, Lock,
-  ThumbsUp, Sparkles, Check, RotateCcw, TrendingUp, AlertTriangle,
+  Hexagon, ArrowRight, ArrowLeft, Layers, Users, MessageSquare, Lock,
+  ThumbsUp, Sparkles, Check, RotateCcw, TrendingUp, AlertTriangle, Clock, Target, BarChart3,
 } from "lucide-react";
 import { Sidebar, TopBar, MobileTopBar, MobileTabBar } from "./index";
 
@@ -372,31 +372,40 @@ const CATEGORIES: Category[] = [
 type Stage = "intro" | "quiz" | "result";
 type Answers = Record<string, 1 | 2 | 3 | 4 | 5>;
 
+/** Todas as perguntas em sequência, cada uma sabendo a que pilar pertence. */
+type FlatQuestion = Question & { catIndex: number; catName: string; catId: string; icon: Category["icon"]; indexInCat: number };
+
+const FLAT: FlatQuestion[] = CATEGORIES.flatMap((c, catIndex) =>
+  c.questions.map((q, indexInCat) => ({
+    ...q,
+    catIndex,
+    catName: c.name,
+    catId: c.id,
+    icon: c.icon,
+    indexInCat,
+  })),
+);
+
 function DiagnosticoPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stage, setStage] = useState<Stage>("intro");
-  const [activeCat, setActiveCat] = useState(0);
+  const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
 
-  const cat = CATEGORIES[activeCat];
-  const answeredInCat = cat.questions.filter((q) => answers[q.id]).length;
   const totalAnswered = Object.keys(answers).length;
-  const totalQuestions = CATEGORIES.reduce((a, c) => a + c.questions.length, 0);
-  const allDone = totalAnswered === totalQuestions;
+  const allDone = totalAnswered === FLAT.length;
 
   const reset = () => {
     setAnswers({});
-    setActiveCat(0);
+    setStep(0);
     setStage("intro");
   };
 
-  const setAnswer = (qid: string, score: 1 | 2 | 3 | 4 | 5) => {
-    setAnswers((prev) => ({ ...prev, [qid]: score }));
-  };
-
-  const next = () => {
-    if (activeCat < CATEGORIES.length - 1) setActiveCat(activeCat + 1);
-    else if (allDone) setStage("result");
+  const start = () => {
+    // Retoma na primeira pergunta ainda sem resposta.
+    const first = FLAT.findIndex((q) => !answers[q.id]);
+    setStep(first === -1 ? 0 : first);
+    setStage("quiz");
   };
 
   return (
@@ -406,19 +415,16 @@ function DiagnosticoPage() {
         <div className="hidden lg:block"><TopBar /></div>
         <div className="lg:hidden"><MobileTopBar /></div>
 
-        {stage === "intro" && <IntroStage onStart={() => setStage("quiz")} hasAnswers={totalAnswered > 0} />}
+        {stage === "intro" && <IntroStage onStart={start} hasAnswers={totalAnswered > 0} answered={totalAnswered} />}
 
         {stage === "quiz" && (
           <QuizStage
-            categories={CATEGORIES}
-            activeCat={activeCat}
-            setActiveCat={setActiveCat}
+            step={step}
+            setStep={setStep}
             answers={answers}
-            setAnswer={setAnswer}
-            answeredInCat={answeredInCat}
-            onFinish={next}
+            setAnswers={setAnswers}
             allDone={allDone}
-            isLastCat={activeCat === CATEGORIES.length - 1}
+            onFinish={() => setStage("result")}
           />
         )}
 
@@ -433,51 +439,142 @@ function DiagnosticoPage() {
 // ————————————————————————————————————————————————————————
 // Intro
 // ————————————————————————————————————————————————————————
-function IntroStage({ onStart, hasAnswers }: { onStart: () => void; hasAnswers: boolean }) {
+function IntroStage({
+  onStart, hasAnswers, answered,
+}: {
+  onStart: () => void;
+  hasAnswers: boolean;
+  answered: number;
+}) {
   return (
-    <section className="flex-1 px-6 py-14 md:px-14 md:py-20">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-16 lg:grid-cols-[1fr_1fr] lg:items-center">
+    <section className="relative flex-1 overflow-hidden px-6 py-14 md:px-14 md:py-20">
+      {/* Luzes azuis ao fundo */}
+      <div
+        className="lure-aurora lure-aurora-a -left-24 top-0 h-[420px] w-[420px]"
+        style={{ background: "oklch(0.62 0.19 250 / 0.28)" }}
+        aria-hidden
+      />
+      <div
+        className="lure-aurora lure-aurora-b right-0 top-40 h-[380px] w-[380px]"
+        style={{ background: "oklch(0.70 0.16 220 / 0.20)" }}
+        aria-hidden
+      />
+
+      <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-14 lg:grid-cols-[1fr_1fr] lg:items-center">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-primary">
-            Diagnóstico de Maturidade
+          <div
+            className="lure-rise inline-flex items-center gap-2 rounded-full border border-[var(--nav)]/30 bg-[var(--nav)]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--nav)]"
+            style={{ "--d": "0ms" } as React.CSSProperties}
+          >
+            <Hexagon className="h-3 w-3" /> Diagnóstico de Maturidade
           </div>
-          <h1 className="mt-5 font-display text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
-            Avalie as principais áreas <span className="italic text-primary/90">de sua empresa</span>
+
+          <h1
+            className="lure-rise mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl"
+            style={{ "--d": "90ms" } as React.CSSProperties}
+          >
+            Avalie as principais áreas{" "}
+            <span className="bg-gradient-to-r from-[oklch(0.80_0.13_225)] to-[oklch(0.58_0.19_258)] bg-clip-text text-transparent">
+              da sua empresa
+            </span>
           </h1>
-          <p className="mt-6 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-            Receba um relatório completo descrevendo o nível de maturidade do seu negócio.
-            A partir disso, crie um plano de ação exclusivo baseado no método LURE Growth.
+
+          <p
+            className="lure-rise mt-6 max-w-lg text-[15px] leading-relaxed text-muted-foreground"
+            style={{ "--d": "180ms" } as React.CSSProperties}
+          >
+            Um raio-x completo do seu negócio em 6 pilares. No final você recebe a Roda da
+            Maturidade e um plano de ação priorizado pelo método LURE Growth.
           </p>
-          <div className="mt-10 flex flex-wrap items-center gap-4">
+
+          {/* Pilares */}
+          <div className="mt-8 flex flex-wrap gap-2">
+            {CATEGORIES.map((c, i) => (
+              <span
+                key={c.id}
+                className="lure-rise inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-surface/50 px-3 py-1.5 text-[11px] font-medium text-muted-foreground"
+                style={{ "--d": `${240 + i * 60}ms` } as React.CSSProperties}
+              >
+                <c.icon className="h-3.5 w-3.5 text-[var(--nav)]" />
+                {c.name}
+              </span>
+            ))}
+          </div>
+
+          <div
+            className="lure-rise mt-10 flex flex-wrap items-center gap-4"
+            style={{ "--d": "640ms" } as React.CSSProperties}
+          >
             <button
               onClick={onStart}
-              className="inline-flex items-center gap-2 rounded-full gradient-gold px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:scale-[1.02]"
+              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full gradient-blue px-7 py-3.5 text-sm font-semibold text-white shadow-[0_10px_40px_-12px_var(--nav)] transition hover:scale-[1.03]"
             >
-              {hasAnswers ? "Continuar" : "Iniciar"} <ArrowRight className="h-4 w-4" />
+              <span
+                className="diag-sweep pointer-events-none absolute inset-y-0 -left-4 w-10 bg-white/25 blur-md"
+                aria-hidden
+              />
+              <span className="relative">{hasAnswers ? "Continuar diagnóstico" : "Iniciar diagnóstico"}</span>
+              <ArrowRight className="relative h-4 w-4 transition group-hover:translate-x-0.5" />
             </button>
-            <div className="text-xs text-muted-foreground">
-              6 pilares · 42 perguntas · ~8 minutos
-            </div>
+            {hasAnswers && (
+              <span className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground tabular-nums">{answered}</span>/{FLAT.length} respondidas
+              </span>
+            )}
+          </div>
+
+          {/* Métricas */}
+          <div className="mt-10 grid max-w-lg grid-cols-3 gap-3">
+            {[
+              { icon: Target, label: "Pilares", value: String(CATEGORIES.length) },
+              { icon: BarChart3, label: "Perguntas", value: String(FLAT.length) },
+              { icon: Clock, label: "Duração", value: "~8 min" },
+            ].map((s, i) => (
+              <div
+                key={s.label}
+                className="lure-rise rounded-2xl border border-border/60 bg-surface/40 px-4 py-3"
+                style={{ "--d": `${700 + i * 80}ms` } as React.CSSProperties}
+              >
+                <s.icon className="h-4 w-4 text-[var(--nav)]" />
+                <div className="mt-2 font-display text-xl font-bold tabular-nums">{s.value}</div>
+                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  {s.label}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Visual card */}
-        <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-surface/40 p-6 shadow-[var(--shadow-card)]">
-          <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Evolução do Diagnóstico
+        {/* Card visual */}
+        <div
+          className="lure-rise relative overflow-hidden rounded-3xl border border-[var(--nav)]/25 bg-surface/40 p-6 shadow-[0_30px_80px_-40px_var(--nav)]"
+          style={{ "--d": "320ms" } as React.CSSProperties}
+        >
+          <div className="pointer-events-none absolute inset-x-0 -top-24 h-48 bg-[radial-gradient(ellipse_at_center,var(--nav),transparent_70%)] opacity-20" />
+          <div className="relative flex items-center justify-between">
+            <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Evolução do Diagnóstico
+            </div>
+            <span className="rounded-full bg-[var(--nav)]/15 px-2 py-0.5 text-[10px] font-bold text-[var(--nav)]">
+              360°
+            </span>
           </div>
-          <div className="mt-6 flex h-40 items-end gap-4">
+
+          <div className="relative mt-6 flex h-40 items-end gap-4">
             {[35, 55, 75, 100].map((h, i) => (
               <div
                 key={i}
-                className={`flex-1 rounded-lg transition-all ${
-                  i === 3 ? "gradient-gold shadow-[var(--shadow-glow)]" : "bg-muted/60"
+                className={`diag-bar flex-1 rounded-lg ${
+                  i === 3
+                    ? "gradient-blue shadow-[0_0_40px_-6px_var(--nav)]"
+                    : "bg-gradient-to-t from-muted/40 to-[var(--nav)]/15"
                 }`}
-                style={{ height: `${h}%` }}
+                style={{ "--h": `${h}%`, "--d": `${400 + i * 130}ms`, height: `${h}%` } as React.CSSProperties}
               />
             ))}
           </div>
-          <div className="mt-8 grid grid-cols-2 gap-4">
+
+          <div className="relative mt-8 grid grid-cols-2 gap-4">
             <MiniCard label="Visão em Gráfico" value="Radar 360°" />
             <MiniCard label="Dossiê de IA" value="Plano de Ação" />
           </div>
@@ -489,7 +586,7 @@ function IntroStage({ onStart, hasAnswers }: { onStart: () => void; hasAnswers: 
 
 function MiniCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
+    <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3 transition hover:border-[var(--nav)]/40">
       <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{label}</div>
       <div className="mt-1 font-display text-sm font-semibold">{value}</div>
     </div>
@@ -500,159 +597,213 @@ function MiniCard({ label, value }: { label: string; value: string }) {
 // Quiz
 // ————————————————————————————————————————————————————————
 function QuizStage({
-  categories, activeCat, setActiveCat, answers, setAnswer,
-  answeredInCat, onFinish, allDone, isLastCat,
+  step, setStep, answers, setAnswers, allDone, onFinish,
 }: {
-  categories: Category[];
-  activeCat: number;
-  setActiveCat: (i: number) => void;
+  step: number;
+  setStep: (i: number) => void;
   answers: Answers;
-  setAnswer: (qid: string, score: 1 | 2 | 3 | 4 | 5) => void;
-  answeredInCat: number;
-  onFinish: () => void;
+  setAnswers: React.Dispatch<React.SetStateAction<Answers>>;
   allDone: boolean;
-  isLastCat: boolean;
+  onFinish: () => void;
 }) {
-  const cat = categories[activeCat];
+  const [dir, setDir] = useState<"fwd" | "back">("fwd");
+  const q = FLAT[step];
+  const selected = answers[q.id];
+  const answeredCount = Object.keys(answers).length;
+  const isLast = step === FLAT.length - 1;
+
+  const go = useCallback(
+    (target: number, direction: "fwd" | "back") => {
+      if (target < 0 || target >= FLAT.length) return;
+      setDir(direction);
+      setStep(target);
+    },
+    [setStep],
+  );
+
+  const pick = useCallback(
+    (score: 1 | 2 | 3 | 4 | 5) => {
+      setAnswers((prev) => ({ ...prev, [q.id]: score }));
+      // Pequena pausa para o usuário ver a seleção antes de avançar.
+      if (step < FLAT.length - 1) {
+        window.setTimeout(() => go(step + 1, "fwd"), 340);
+      }
+    },
+    [q.id, step, go, setAnswers],
+  );
+
+  // Atalhos: 1-5 responde, setas navegam.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "1" && e.key <= "5") pick(Number(e.key) as 1 | 2 | 3 | 4 | 5);
+      else if (e.key === "ArrowRight") go(step + 1, "fwd");
+      else if (e.key === "ArrowLeft") go(step - 1, "back");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pick, go, step]);
 
   return (
-    <section className="flex-1 px-4 py-10 md:px-10 md:py-14">
-      <div className="mx-auto max-w-6xl">
-        {/* Category tabs */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-          {categories.map((c, i) => {
-            const done = c.questions.filter((q) => answers[q.id]).length;
-            const active = i === activeCat;
+    <section className="relative flex-1 overflow-hidden px-4 py-8 md:px-10 md:py-12">
+      <div
+        className="lure-aurora lure-aurora-a left-1/4 top-0 h-[380px] w-[380px]"
+        style={{ background: "oklch(0.62 0.19 250 / 0.18)" }}
+        aria-hidden
+      />
+
+      <div className="relative mx-auto max-w-3xl">
+        {/* Trilha de pilares */}
+        <div className="flex items-center gap-1.5">
+          {CATEGORIES.map((c, i) => {
+            const done = c.questions.filter((x) => answers[x.id]).length;
+            const pctCat = (done / c.questions.length) * 100;
+            const active = i === q.catIndex;
+            const firstOfCat = FLAT.findIndex((f) => f.catIndex === i);
             return (
               <button
                 key={c.id}
-                onClick={() => setActiveCat(i)}
-                className={`group relative flex flex-col items-start gap-3 rounded-2xl border p-4 text-left transition ${
-                  active
-                    ? "border-primary/50 bg-primary/5 shadow-[0_0_30px_-8px_oklch(0.78_0.14_70/0.45)]"
-                    : "border-border/50 bg-surface/40 hover:border-border"
-                }`}
+                onClick={() => go(firstOfCat, firstOfCat > step ? "fwd" : "back")}
+                title={`${c.name} — ${done}/${c.questions.length}`}
+                className="group flex-1"
               >
-                <div className={`grid h-9 w-9 place-items-center rounded-lg ${active ? "bg-primary/15 text-primary" : "bg-muted/60 text-muted-foreground"}`}>
-                  <c.icon className="h-4 w-4" />
+                <div
+                  className={`h-1.5 overflow-hidden rounded-full transition ${
+                    active ? "bg-[var(--nav)]/25" : "bg-muted/50 group-hover:bg-muted"
+                  }`}
+                >
+                  <div
+                    className="h-full rounded-full bg-[var(--nav)] transition-all duration-500"
+                    style={{ width: `${pctCat}%` }}
+                  />
                 </div>
-                <div className="flex-1">
-                  <div className={`text-[13px] font-semibold leading-tight ${active ? "text-foreground" : "text-foreground/80"}`}>
-                    {c.name}
-                  </div>
-                  <div className="mt-2 h-px w-full bg-border/40" />
-                  <div className="mt-2 text-[11px] tabular-nums text-muted-foreground">
-                    {done} de {c.questions.length}
-                  </div>
+                <div
+                  className={`mt-2 hidden truncate text-[10px] font-semibold uppercase tracking-[0.14em] transition md:block ${
+                    active ? "text-[var(--nav)]" : "text-muted-foreground/60 group-hover:text-muted-foreground"
+                  }`}
+                >
+                  {c.name.split(" ")[0]}
                 </div>
               </button>
             );
           })}
         </div>
 
-        {/* Questions */}
-        <div className="mt-14">
-          <div className="text-center">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-              Categoria
+        {/* Cabeçalho da pergunta */}
+        <div className="mt-8 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-xl border border-[var(--nav)]/30 bg-[var(--nav)]/10 text-[var(--nav)]">
+              <q.icon className="h-5 w-5" />
             </div>
-            <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight md:text-4xl">
-              {cat.name}
-            </h2>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--nav)]">
+                {q.catName}
+              </div>
+              <div className="text-[11px] text-muted-foreground tabular-nums">
+                Pergunta {step + 1} de {FLAT.length} · {answeredCount} respondidas
+              </div>
+            </div>
+          </div>
+          <div className="font-display text-3xl font-bold tabular-nums text-muted-foreground/30">
+            {String(step + 1).padStart(2, "0")}
+          </div>
+        </div>
+
+        {/* Pergunta + opções (remonta a cada passo para reanimar) */}
+        <div key={q.id} className={dir === "fwd" ? "diag-in-fwd" : "diag-in-back"}>
+          <h2 className="mt-8 font-display text-2xl font-semibold leading-snug tracking-tight md:text-[30px]">
+            {q.text}
+          </h2>
+
+          <div className="mt-7 flex flex-col gap-2.5">
+            {q.options.map((o, i) => {
+              const active = selected === o.score;
+              return (
+                <button
+                  key={o.score}
+                  onClick={() => pick(o.score)}
+                  className={`diag-option group relative flex items-start gap-4 overflow-hidden rounded-2xl border px-4 py-3.5 text-left transition-all duration-200 ${
+                    active
+                      ? "diag-pick border-[var(--nav)]/70 bg-[var(--nav)]/12 shadow-[0_0_30px_-10px_var(--nav)]"
+                      : "border-border/50 bg-surface/40 hover:-translate-y-0.5 hover:border-[var(--nav)]/40 hover:bg-surface/70"
+                  }`}
+                  style={{ "--d": `${i * 70}ms` } as React.CSSProperties}
+                >
+                  {active && (
+                    <span
+                      className="diag-ripple pointer-events-none absolute left-8 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--nav)]/30"
+                      aria-hidden
+                    />
+                  )}
+                  <span
+                    className={`relative mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[12px] font-bold tabular-nums transition ${
+                      active
+                        ? "gradient-blue text-white"
+                        : "bg-muted/60 text-muted-foreground group-hover:text-foreground"
+                    }`}
+                  >
+                    {active ? <Check className="h-4 w-4" /> : o.score}
+                  </span>
+                  <span className="relative text-[14px] leading-relaxed">
+                    <span className={active ? "font-semibold text-foreground" : "font-semibold text-foreground/90"}>
+                      {o.label}
+                    </span>
+                    <span className="text-muted-foreground"> — {o.text}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Navegação */}
+        <div className="mt-10 flex items-center justify-between">
+          <button
+            onClick={() => go(step - 1, "back")}
+            disabled={step === 0}
+            className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-sm text-muted-foreground transition hover:border-border hover:text-foreground disabled:opacity-30"
+          >
+            <ArrowLeft className="h-4 w-4" /> Anterior
+          </button>
+
+          <div className="hidden text-[11px] text-muted-foreground sm:block">
+            Dica: use as teclas <kbd className="rounded bg-muted/60 px-1.5 py-0.5 font-mono">1</kbd>–
+            <kbd className="rounded bg-muted/60 px-1.5 py-0.5 font-mono">5</kbd> para responder
           </div>
 
-          <div className="mx-auto mt-10 flex max-w-2xl flex-col gap-10">
-            {cat.questions.map((q, idx) => (
-              <QuestionBlock
-                key={q.id}
-                index={idx + 1}
-                question={q}
-                selected={answers[q.id]}
-                onSelect={(s) => setAnswer(q.id, s)}
-              />
-            ))}
-          </div>
-
-          {/* Nav */}
-          <div className="mx-auto mt-12 flex max-w-2xl items-center justify-between">
+          {isLast ? (
             <button
-              onClick={() => setActiveCat(Math.max(0, activeCat - 1))}
-              disabled={activeCat === 0}
-              className="text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-30"
+              onClick={onFinish}
+              disabled={!allDone}
+              className="inline-flex items-center gap-2 rounded-full gradient-blue px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_40px_-12px_var(--nav)] transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
             >
-              ← Anterior
+              Gerar diagnóstico <Sparkles className="h-4 w-4" />
             </button>
+          ) : (
+            <button
+              onClick={() => go(step + 1, "fwd")}
+              disabled={!selected}
+              className="inline-flex items-center gap-2 rounded-full gradient-blue px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_40px_-12px_var(--nav)] transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+            >
+              Próxima <ArrowRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
 
-            {!isLastCat && (
-              <button
-                onClick={onFinish}
-                disabled={answeredInCat < cat.questions.length}
-                className="inline-flex items-center gap-2 rounded-full gradient-gold px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Próximo <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
-
-            {isLastCat && (
-              <button
-                onClick={onFinish}
-                disabled={!allDone}
-                className="inline-flex items-center gap-2 rounded-full gradient-gold px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Gerar diagnóstico <Sparkles className="h-4 w-4" />
-              </button>
-            )}
+        {/* Progresso geral */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Progresso geral</span>
+            <span className="tabular-nums">{Math.round((answeredCount / FLAT.length) * 100)}%</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted/50">
+            <div
+              className="h-full rounded-full gradient-blue transition-all duration-700"
+              style={{ width: `${(answeredCount / FLAT.length) * 100}%` }}
+            />
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function QuestionBlock({
-  index, question, selected, onSelect,
-}: {
-  index: number;
-  question: Question;
-  selected?: 1 | 2 | 3 | 4 | 5;
-  onSelect: (s: 1 | 2 | 3 | 4 | 5) => void;
-}) {
-  return (
-    <div>
-      <h3 className="text-[15px] font-semibold leading-snug text-foreground">
-        {index}. {question.text}
-      </h3>
-      <div className="mt-4 flex flex-col gap-2">
-        {question.options.map((o) => {
-          const active = selected === o.score;
-          return (
-            <button
-              key={o.score}
-              onClick={() => onSelect(o.score)}
-              className={`group flex items-start gap-3 rounded-xl border px-4 py-3 text-left transition ${
-                active
-                  ? "border-primary/60 bg-primary/10"
-                  : "border-border/50 bg-surface/40 hover:border-border hover:bg-surface/60"
-              }`}
-            >
-              <span
-                className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md text-[11px] font-bold tabular-nums transition ${
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted/60 text-muted-foreground group-hover:text-foreground"
-                }`}
-              >
-                {o.score}
-              </span>
-              <span className="text-[13.5px] leading-relaxed text-foreground/90">
-                <span className="font-semibold">{o.label}:</span>{" "}
-                <span className="text-muted-foreground">{o.text}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
@@ -689,7 +840,7 @@ function ResultStage({ answers, onRestart }: { answers: Answers; onRestart: () =
         {/* Header */}
         <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-primary">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--nav)]">
               Roda da Maturidade
             </div>
             <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight md:text-5xl">
@@ -740,7 +891,7 @@ function ResultStage({ answers, onRestart }: { answers: Answers; onRestart: () =
                 </div>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/50">
                   <div
-                    className="h-full gradient-gold transition-all"
+                    className="h-full gradient-blue transition-all duration-700"
                     style={{ width: `${(s.avg / 5) * 100}%` }}
                   />
                 </div>
@@ -760,19 +911,19 @@ function ResultStage({ answers, onRestart }: { answers: Answers; onRestart: () =
           <InsightPanel
             icon={AlertTriangle}
             title="Oportunidades de melhoria"
-            accent="text-primary"
+            accent="text-[var(--nav)]"
             items={weaknesses.map((s) => ({ name: s.name, avg: s.avg }))}
           />
         </div>
 
         {/* Action Plan */}
-        <div className="mt-8 overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/10 via-surface/40 to-transparent p-8">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-primary">
+        <div className="mt-8 overflow-hidden rounded-3xl border border-[var(--nav)]/25 bg-gradient-to-br from-[var(--nav)]/12 via-surface/40 to-transparent p-8">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--nav)]">
             <Sparkles className="h-3.5 w-3.5" /> Plano de Ação Recomendado
           </div>
           <h2 className="mt-3 font-display text-2xl font-semibold tracking-tight md:text-3xl">
-            Comece pelas trilhas de <span className="text-primary">{weaknesses[0].name}</span>{" "}
-            e <span className="text-primary">{weaknesses[1].name}</span>
+            Comece pelas trilhas de <span className="text-[var(--nav)]">{weaknesses[0].name}</span>{" "}
+            e <span className="text-[var(--nav)]">{weaknesses[1].name}</span>
           </h2>
           <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
             {weaknesses.map((w) => (
@@ -788,7 +939,7 @@ function ResultStage({ answers, onRestart }: { answers: Answers; onRestart: () =
 function ToneBadge({ tone, label }: { tone: "critical" | "stable" | "excellent"; label: string }) {
   const styles = {
     critical: "border-destructive/40 bg-destructive/10 text-destructive",
-    stable: "border-primary/40 bg-primary/10 text-primary",
+    stable: "border-[var(--nav)]/40 bg-[var(--nav)]/10 text-[var(--nav)]",
     excellent: "border-emerald-400/40 bg-emerald-400/10 text-emerald-400",
   }[tone];
   return (
@@ -868,14 +1019,14 @@ function ActionCard({ name }: { name: string }) {
   const actions = ACTION_LIBRARY[name] || [];
   return (
     <div className="rounded-2xl border border-border/60 bg-background/50 p-6">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--nav)]">
         Trilha prioritária
       </div>
       <div className="mt-2 font-display text-xl font-semibold">{name}</div>
       <ul className="mt-5 flex flex-col gap-3">
         {actions.map((a, i) => (
           <li key={i} className="flex items-start gap-3 text-[13.5px] leading-relaxed">
-            <span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-md bg-primary/15 text-primary">
+            <span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-md bg-[var(--nav)]/15 text-[var(--nav)]">
               <Check className="h-3 w-3" />
             </span>
             <span className="text-foreground/85">{a}</span>
@@ -936,14 +1087,14 @@ function RadarChart({ scores }: { scores: { name: string; avg: number }[] }) {
         {/* Filled shape */}
         <polygon
           points={polygon}
-          fill="oklch(0.78 0.11 75 / 0.22)"
-          stroke="oklch(0.78 0.11 75)"
+          fill="oklch(0.62 0.19 250 / 0.25)"
+          stroke="oklch(0.70 0.17 245)"
           strokeWidth={1.5}
         />
         {/* Points */}
         {scores.map((s, i) => {
           const [x, y] = point(i, s.avg);
-          return <circle key={i} cx={x} cy={y} r={3} fill="oklch(0.82 0.13 70)" />;
+          return <circle key={i} cx={x} cy={y} r={3} fill="oklch(0.80 0.13 230)" />;
         })}
         {/* Labels */}
         {scores.map((s, i) => {
