@@ -6,6 +6,7 @@ import {
   TopBar,
   MobileTopBar,
   MobileTabBar,
+  MobileModuleCard,
   sections,
   type Module,
 } from "./index";
@@ -96,7 +97,7 @@ function MeusCursosPage() {
             <TopBar />
           </div>
 
-          <main className="pb-28 lg:pb-24">
+          <main className="pb-32 lg:pb-24">
             <div className="mx-auto max-w-[1400px] px-4 md:px-10 pt-8 lg:pt-10">
               <header>
                 <h1 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
@@ -126,21 +127,35 @@ function MeusCursosPage() {
                 {visible.length === 0 ? (
                   <EmptyState tab={tab} />
                 ) : (
-                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {visible.map((m) =>
-                      tab === "certificados" ? (
-                        <CertificateCard key={m.title} m={m} />
-                      ) : (
-                        <CourseCard key={m.title} m={m} covers={covers} />
-                      ),
-                    )}
-                  </div>
+                  <>
+                    {/* Mobile: grade de dois cards, igual a home */}
+                    <div className="grid grid-cols-2 gap-3.5 lg:hidden">
+                      {visible.map((m) =>
+                        tab === "certificados" ? (
+                          <CertificateCard key={m.title} m={m} />
+                        ) : (
+                          <MobileModuleCard key={m.title} m={m} sectionId={m.sectionId} />
+                        ),
+                      )}
+                    </div>
+
+                    {/* Desktop */}
+                    <div className="hidden gap-5 lg:grid lg:grid-cols-3 xl:grid-cols-4">
+                      {visible.map((m) =>
+                        tab === "certificados" ? (
+                          <CertificateCard key={m.title} m={m} />
+                        ) : (
+                          <CourseCard key={m.title} m={m} covers={covers} />
+                        ),
+                      )}
+                    </div>
+                  </>
                 )}
               </section>
             </div>
           </main>
 
-          <MobileTabBar />
+          <MobileTabBar current="/meus-cursos" />
         </div>
       </div>
     </div>

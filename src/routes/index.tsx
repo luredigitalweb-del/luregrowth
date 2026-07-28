@@ -22,6 +22,9 @@ import {
   Headphones,
   Gauge,
   ShieldCheck,
+  Menu,
+  X,
+  ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Avatar, initialsOf } from "@/components/avatar";
@@ -439,7 +442,7 @@ function Portal() {
           <div className="hidden lg:block">
             <TopBar />
           </div>
-          <main className="pb-28 lg:pb-24">
+          <main className="pb-32 lg:pb-24">
             {/* Mobile-only G4-style hero */}
             <div className="lg:hidden">
               <MobileHero />
@@ -466,85 +469,242 @@ function Portal() {
 
 export function MobileTopBar() {
   const { profile, session } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <header
-      className="sticky top-0 z-40 flex items-center justify-between border-b border-border/40 bg-background/85 px-4 pb-3 backdrop-blur-xl lg:hidden"
-      style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
-    >
-      <div className="flex items-center gap-2.5">
-        <img src={lureLogo.url} alt="LURE" className="h-8 w-8 rounded-full object-contain" />
-        <div className="leading-tight">
-          <div className="font-display text-[13px] font-bold tracking-[0.16em]">LURE</div>
-          <div className="text-[9px] uppercase tracking-[0.28em] text-muted-foreground">Growth</div>
+    <>
+      <header
+        className="sticky top-0 z-40 flex items-center justify-between bg-background/80 px-4 pb-3 backdrop-blur-xl lg:hidden"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+      >
+        <button
+          onClick={() => setMenuOpen(true)}
+          aria-label="Abrir menu"
+          className="grid h-10 w-10 place-items-center rounded-xl text-foreground transition active:scale-95"
+        >
+          <Menu className="h-6 w-6" strokeWidth={1.8} />
+        </button>
+
+        <Link to="/" className="flex items-center gap-2">
+          <img src={lureLogo.url} alt="LURE" className="h-7 w-7 object-contain" />
+          <span className="font-display text-[17px] leading-none tracking-tight">
+            <span className="font-normal">Lure</span> <span className="font-bold">Growth</span>
+          </span>
+        </Link>
+
+        <div className="flex items-center gap-2">
+          <button
+            aria-label="Notificações"
+            className="relative grid h-10 w-10 place-items-center rounded-xl text-foreground transition active:scale-95"
+          >
+            <Bell className="h-[22px] w-[22px]" strokeWidth={1.7} />
+            <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--nav)] ring-2 ring-background" />
+          </button>
+          <button
+            onClick={openSettings}
+            aria-label="Editar perfil"
+            className="relative h-10 w-10 shrink-0 rounded-full ring-2 ring-white/15 transition active:scale-95"
+          >
+            <Avatar
+              url={profile?.avatar_url}
+              name={profile?.full_name}
+              email={profile?.email || session?.user?.email}
+              className="h-10 w-10"
+              textClassName="text-[12px]"
+            />
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
+          </button>
         </div>
-      </div>
-      <div className="flex items-center gap-2">
+      </header>
+
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+    </>
+  );
+}
+
+/** Gaveta lateral do mobile — abre no botão de menu da barra de topo. */
+function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { profile, session, isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  // Trava o scroll do fundo enquanto a gaveta está aberta.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  const links = [
+    { icon: House, label: "Início", to: "/" },
+    { icon: BookOpen, label: "Meus cursos", to: "/meus-cursos" },
+    { icon: Gauge, label: "Diagnóstico", to: "/diagnostico" },
+    { icon: Users, label: "Comunidade", to: "/comunidade" },
+    { icon: ScrollText, label: "Certificados", to: "/meus-cursos" },
+  ] as const;
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    onClose();
+    navigate({ to: "/login", replace: true });
+  };
+
+  return (
+    <div className={`lg:hidden ${open ? "" : "pointer-events-none"}`}>
+      {/* Fundo escuro */}
+      <div
+        onClick={onClose}
+        className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+          open ? "opacity-100" : "opacity-0"
+        }`}
+      />
+
+      {/* Painel */}
+      <aside
+        className={`dark-scope fixed inset-y-0 left-0 z-50 flex w-[86%] max-w-[320px] flex-col border-r border-border/60 bg-gradient-to-b from-surface to-background shadow-2xl transition-transform duration-300 ease-out ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 1rem)" }}
+      >
+        <div className="flex items-center justify-between px-5">
+          <div className="flex items-center gap-2.5">
+            <img src={lureLogo.url} alt="LURE" className="h-9 w-9 object-contain" />
+            <span className="font-display text-[17px] leading-none tracking-tight">
+              <span className="font-normal">Lure</span> <span className="font-bold">Growth</span>
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar menu"
+            className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition active:scale-95"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Perfil */}
         <button
-          aria-label="Buscar"
-          className="grid h-9 w-9 place-items-center rounded-full border border-border bg-surface text-muted-foreground"
-        >
-          <Search className="h-4 w-4" />
-        </button>
-        <button
-          aria-label="Notificações"
-          className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-surface text-muted-foreground"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500 ring-2 ring-background" />
-        </button>
-        <button
-          onClick={openSettings}
-          aria-label="Editar perfil"
-          className="relative h-9 w-9 shrink-0 rounded-full ring-2 ring-primary/40 transition active:scale-95"
+          onClick={() => {
+            onClose();
+            openSettings();
+          }}
+          className="mx-4 mt-6 flex items-center gap-3 rounded-2xl border border-border/60 bg-surface-elevated/60 p-3 text-left transition active:scale-[0.99]"
         >
           <Avatar
             url={profile?.avatar_url}
             name={profile?.full_name}
             email={profile?.email || session?.user?.email}
-            className="h-9 w-9"
-            textClassName="text-[11px]"
+            className="h-11 w-11"
           />
-          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-background" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">
+              {profile?.full_name || "Aluno LURE"}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {isAdmin ? "Administrador" : "Membro"}
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
-      </div>
-    </header>
+
+        {/* Navegação */}
+        <nav className="mt-6 flex flex-col gap-1 px-3">
+          {links.map((l) => (
+            <Link
+              key={l.label}
+              to={l.to}
+              onClick={onClose}
+              className="flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-foreground/90 transition active:bg-muted/60"
+            >
+              <l.icon className="h-5 w-5 text-muted-foreground" strokeWidth={1.6} />
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="mx-3 my-4 h-px bg-border/50" />
+
+        <div className="flex flex-col gap-1 px-3">
+          <a
+            href="https://wa.me/5585991112424?text=Ol%C3%A1%2C%20estou%20na%20%C3%81rea%20de%20Membros%20e%20preciso%20de%20ajuda"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+            className="flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-foreground/90 transition active:bg-muted/60"
+          >
+            <Headphones className="h-5 w-5 text-muted-foreground" strokeWidth={1.6} /> Suporte
+          </a>
+          <button
+            onClick={() => {
+              onClose();
+              openSettings();
+            }}
+            className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium text-foreground/90 transition active:bg-muted/60"
+          >
+            <Settings className="h-5 w-5 text-muted-foreground" strokeWidth={1.6} /> Configurações
+          </button>
+          {isAdmin && (
+            <Link
+              to="/admin"
+              onClick={onClose}
+              className="flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-foreground/90 transition active:bg-muted/60"
+            >
+              <ShieldCheck className="h-5 w-5 text-muted-foreground" strokeWidth={1.6} />{" "}
+              Administração
+            </Link>
+          )}
+        </div>
+
+        <div className="mt-auto px-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}>
+          <button
+            onClick={handleSignOut}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-red-400 transition active:bg-red-500/10"
+          >
+            <LogOut className="h-5 w-5" strokeWidth={1.6} /> Sair
+          </button>
+        </div>
+      </aside>
+    </div>
   );
 }
 
 const MOBILE_SLIDES = [
   {
-    kicker: "Conheça agora o novo",
-    title: "App LURE",
-    headline: ["A MAIOR", "NOVIDADE", "DA LURE"],
-    caption: "desde 2019",
-    cta: "Clique e saiba mais",
-    image: () => lureTeam.url,
+    eyebrow: "Bem-vindo ao",
+    title: "LURE Growth",
+    lines: [
+      "A plataforma oficial da agência que já rodou +R$100M em mídia.",
+      "Trilhas guiadas, mentorias ao vivo e a comunidade que cresce junto com você.",
+    ],
+    cta: "Explorar agora",
+    to: "/meus-cursos",
+    image: "/banner-home.jpg",
   },
   {
-    kicker: "Nova trilha disponível",
+    eyebrow: "Nova trilha",
     title: "IA Aplicada",
-    headline: ["DOMINE", "AS FERRAMENTAS", "DE IA"],
-    caption: "do zero ao avançado",
+    lines: [
+      "Domine as ferramentas de IA que já estão dentro da operação da LURE.",
+      "Do primeiro prompt aos agentes que trabalham por você.",
+    ],
     cta: "Começar trilha",
-    image: () => lureTeam.url,
+    to: "/meus-cursos",
+    image: "/social-prospeccao.jpg",
   },
   {
-    kicker: "Toda quinta, ao vivo",
+    eyebrow: "Toda quinta, ao vivo",
     title: "Mentorias",
-    headline: ["ENCONTROS", "SEMANAIS", "COM OS SÓCIOS"],
-    caption: "sessões exclusivas",
+    lines: [
+      "Encontros semanais com os sócios para destravar o seu negócio.",
+      "Traga o seu caso e saia com um plano.",
+    ],
     cta: "Ver agenda",
-    image: () => lureTeam.url,
+    to: "/comunidade",
+    image: "/social-pratica.jpg",
   },
-  {
-    kicker: "Comunidade LURE",
-    title: "Networking",
-    headline: ["CONECTE-SE", "COM +2.400", "ALUNOS"],
-    caption: "comunidade ativa",
-    cta: "Entrar agora",
-    image: () => lureTeam.url,
-  },
-];
+] as const;
 
 function MobileHero() {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -565,116 +725,85 @@ function MobileHero() {
     if (i !== index) setIndex(i);
   };
 
+  // Passa sozinho de slide; para assim que o dedo encosta.
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (paused) return;
+    const t = window.setInterval(() => {
+      const el = scrollerRef.current;
+      if (!el) return;
+      const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % total;
+      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+    }, 6000);
+    return () => window.clearInterval(t);
+  }, [paused, total]);
+
   return (
-    <section className="relative px-4 pt-6">
-      <div className="relative">
+    <section
+      className="px-4 pt-2"
+      onTouchStart={() => setPaused(true)}
+      onTouchEnd={() => setPaused(false)}
+    >
+      <div className="relative overflow-hidden rounded-[26px] border border-white/10 shadow-[0_24px_60px_-30px_oklch(0_0_0/0.9)]">
         <div
           ref={scrollerRef}
           onScroll={onScroll}
-          className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth rounded-[28px] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           {MOBILE_SLIDES.map((slide, i) => (
-            <div key={i} className="w-full flex-shrink-0 snap-center">
-              <div className="relative overflow-hidden rounded-[28px] border border-primary/25 bg-surface shadow-[0_30px_80px_-30px_oklch(0_0_0/0.7)]">
-                <img
-                  src={slide.image()}
-                  alt=""
-                  aria-hidden
-                  className="absolute inset-0 h-full w-full object-cover object-center opacity-70"
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/60 to-background" />
-                <div
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background:
-                      "radial-gradient(ellipse 90% 60% at 50% 100%, oklch(0.78 0.14 70 / 0.35), transparent 65%)",
-                  }}
-                />
-                <div className="relative flex min-h-[520px] flex-col items-center px-6 pb-16 pt-10 text-center">
-                  <div className="flex items-center gap-2.5">
-                    <img
-                      src={lureLogo.url}
-                      alt="LURE"
-                      className="h-9 w-9 rounded-full object-contain"
-                    />
-                    <span className="font-display text-lg font-bold tracking-[0.22em]">LURE</span>
-                  </div>
+            <article key={slide.title} className="relative w-full flex-shrink-0 snap-center">
+              {/* Foto ocupando a direita, esmaecendo para o texto respirar */}
+              <img
+                src={slide.image}
+                alt=""
+                aria-hidden
+                loading={i === 0 ? "eager" : "lazy"}
+                decoding="async"
+                className="absolute inset-y-0 right-0 h-full w-[68%] object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#050914] via-[#050914]/85 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050914] via-transparent to-transparent" />
+              <div
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(ellipse 70% 60% at 85% 60%, oklch(0.62 0.19 250 / 0.35), transparent 70%)",
+                }}
+              />
 
-                  <p className="mt-8 text-sm text-muted-foreground">{slide.kicker}</p>
-                  <h1
-                    className="mt-1 text-5xl font-medium italic leading-[0.95] tracking-tight text-primary"
-                    style={{ fontFamily: '"Cormorant Garamond", serif' }}
-                  >
-                    {slide.title}
-                  </h1>
-
-                  <div className="mt-10 w-full">
-                    <h2 className="font-display text-[34px] font-black uppercase leading-[0.95] tracking-tight text-foreground">
-                      {slide.headline[0]}
-                      <br />
-                      {slide.headline[1]}
-                      <br />
-                      <span
-                        className="bg-clip-text text-transparent"
-                        style={{
-                          backgroundImage:
-                            "linear-gradient(90deg, oklch(0.9 0.11 85), oklch(0.78 0.13 70), oklch(0.7 0.15 55))",
-                        }}
-                      >
-                        {slide.headline[2]}
-                      </span>
-                    </h2>
-                    <p
-                      className="mt-3 text-lg italic text-muted-foreground"
-                      style={{ fontFamily: '"Cormorant Garamond", serif' }}
-                    >
-                      {slide.caption}
+              <div className="relative flex min-h-[300px] flex-col justify-center px-6 py-9">
+                <h1 className="font-display text-[30px] font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+                  <span className="block text-[19px] font-normal text-white/90">{slide.eyebrow}</span>
+                  {slide.title}
+                </h1>
+                <div className="mt-4 max-w-[62%] space-y-2.5">
+                  {slide.lines.map((l) => (
+                    <p key={l} className="text-[12.5px] leading-relaxed text-white/70">
+                      {l}
                     </p>
-                  </div>
-
-                  <button className="mt-8 inline-flex items-center gap-2 rounded-full gradient-gold px-6 py-3 text-sm font-bold text-primary-foreground shadow-[var(--shadow-glow)]">
-                    <Target className="h-4 w-4" />
-                    {slide.cta}
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+                  ))}
                 </div>
+                <Link
+                  to={slide.to}
+                  className="mt-6 inline-flex w-fit items-center gap-2.5 rounded-full gradient-blue px-5 py-3 text-[14px] font-semibold text-white shadow-[0_12px_30px_-10px_var(--nav)] transition active:scale-95"
+                >
+                  {slide.cta} <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
-            </div>
+            </article>
           ))}
         </div>
 
-        {/* Floating arrows */}
-        <button
-          type="button"
-          aria-label="Anterior"
-          onClick={() => scrollTo(index - 1)}
-          disabled={index === 0}
-          className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full border border-primary/30 bg-background/60 p-2 text-foreground shadow-[0_8px_24px_-8px_oklch(0_0_0/0.6)] backdrop-blur-md transition hover:bg-background/80 disabled:opacity-30"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          aria-label="Próximo"
-          onClick={() => scrollTo(index + 1)}
-          disabled={index === total - 1}
-          className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full border border-primary/30 bg-background/60 p-2 text-foreground shadow-[0_8px_24px_-8px_oklch(0_0_0/0.6)] backdrop-blur-md transition hover:bg-background/80 disabled:opacity-30"
-        >
-          <ChevronRight className="h-5 w-5" />
-        </button>
-
-        {/* Floating dots */}
-        <div className="pointer-events-none absolute bottom-4 left-0 right-0 z-10 flex items-center justify-center gap-1.5">
+        {/* Indicadores */}
+        <div className="pointer-events-none absolute bottom-4 left-0 right-0 flex items-center justify-center gap-1.5">
           {MOBILE_SLIDES.map((_, i) => (
             <button
               key={i}
               type="button"
-              aria-label={`Ir para slide ${i + 1}`}
+              aria-label={`Ir para o slide ${i + 1}`}
               onClick={() => scrollTo(i)}
-              className={`pointer-events-auto h-1.5 rounded-full transition-all ${
-                i === index
-                  ? "w-6 bg-primary shadow-[0_0_12px_oklch(0.78_0.14_70/0.7)]"
-                  : "w-1.5 bg-muted-foreground/40"
+              className={`pointer-events-auto h-1.5 rounded-full transition-all duration-300 ${
+                i === index ? "w-7 bg-white" : "w-4 bg-white/30"
               }`}
             />
           ))}
@@ -684,39 +813,47 @@ function MobileHero() {
   );
 }
 
-export function MobileTabBar() {
+export function MobileTabBar({ current = "/" }: { current?: string }) {
   const items = [
-    { icon: House, label: "Início", active: true },
-    { icon: BookOpen, label: "Cursos" },
-    { icon: Users, label: "Comunidade" },
-    { icon: User, label: "Perfil" },
-  ];
+    { icon: House, label: "Início", to: "/" },
+    { icon: BookOpen, label: "Cursos", to: "/meus-cursos" },
+    { icon: Gauge, label: "Diagnóstico", to: "/diagnostico" },
+    { icon: Users, label: "Comunidade", to: "/comunidade" },
+  ] as const;
+
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/50 bg-background/90 px-2 pt-2 backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 px-4 lg:hidden"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
     >
-      <ul className="flex items-stretch justify-between">
-        {items.map((it) => (
-          <li key={it.label} className="flex-1">
-            <button
-              className={`flex w-full flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition ${
-                it.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span
-                className={`grid h-9 w-9 place-items-center rounded-full transition ${
-                  it.active
-                    ? "bg-primary/15 ring-1 ring-primary/40 shadow-[0_0_20px_-4px_var(--primary)]"
-                    : ""
+      <ul className="flex items-stretch justify-between rounded-[26px] border border-white/10 bg-surface/85 px-2 py-2 shadow-[0_-10px_40px_-20px_oklch(0_0_0/0.9)] backdrop-blur-2xl">
+        {items.map((it) => {
+          const active = it.to === current;
+          return (
+            <li key={it.label} className="flex-1">
+              <Link
+                to={it.to}
+                className={`flex w-full flex-col items-center gap-1.5 rounded-2xl px-1 py-1.5 text-[11px] font-medium transition ${
+                  active ? "text-[var(--nav)]" : "text-muted-foreground"
                 }`}
               >
-                <it.icon className="h-4 w-4" />
-              </span>
-              {it.label}
-            </button>
-          </li>
-        ))}
+                <span
+                  className={`grid h-10 w-10 place-items-center rounded-2xl transition ${
+                    active
+                      ? "bg-[var(--nav)]/15 shadow-[0_0_24px_-6px_var(--nav)]"
+                      : ""
+                  }`}
+                >
+                  <it.icon
+                    className="h-[22px] w-[22px]"
+                    strokeWidth={active ? 2 : 1.6}
+                  />
+                </span>
+                {it.label}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
@@ -1172,26 +1309,36 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
   };
 
   return (
-    <section className="mt-14">
-      <div className="mb-5 flex items-end justify-between">
-        <div>
-          <h2 className="font-display text-xl font-bold tracking-[0.15em]">{section.title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{section.subtitle}</p>
+    <section className="mt-10 lg:mt-14">
+      <div className="mb-4 flex items-end justify-between gap-3 lg:mb-5">
+        <div className="min-w-0">
+          <h2 className="font-display text-[19px] font-bold tracking-[0.14em] lg:text-xl lg:tracking-[0.15em]">
+            {section.title}
+          </h2>
+          <p className="mt-1 text-[13px] text-muted-foreground lg:text-sm">{section.subtitle}</p>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{section.modules.length} módulos</span>
-          <button className="flex items-center gap-1 transition hover:text-foreground">
+        <div className="flex shrink-0 items-center gap-4 text-sm text-muted-foreground">
+          <span className="hidden lg:inline">{section.modules.length} módulos</span>
+          <button className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[var(--nav)] transition hover:brightness-125 lg:text-sm lg:text-muted-foreground lg:hover:text-foreground">
             Ver todos <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="relative">
+      {/* Mobile: grade de duas colunas, como um app */}
+      <div className="grid grid-cols-2 gap-3.5 lg:hidden">
+        {section.modules.map((m, i) => (
+          <MobileModuleCard key={m.title} m={m} sectionId={section.id} index={i} />
+        ))}
+      </div>
+
+      {/* Desktop: carrossel horizontal */}
+      <div className="relative hidden lg:block">
         <button
           type="button"
           aria-label="Anterior"
           onClick={() => scrollBy(-1)}
-          className="absolute -left-4 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-lg backdrop-blur transition hover:border-primary/50 hover:text-primary md:flex"
+          className="absolute -left-4 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-lg backdrop-blur transition hover:border-primary/50 hover:text-primary lg:flex"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -1199,7 +1346,7 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
           type="button"
           aria-label="Próximo"
           onClick={() => scrollBy(1)}
-          className="absolute -right-4 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-lg backdrop-blur transition hover:border-primary/50 hover:text-primary md:flex"
+          className="absolute -right-4 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-lg backdrop-blur transition hover:border-primary/50 hover:text-primary lg:flex"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
@@ -1220,6 +1367,79 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
         </div>
       </div>
     </section>
+  );
+}
+
+/** Card do mobile: capa quadrada, titulo embaixo e progresso — layout de app. */
+export function MobileModuleCard({
+  m,
+  sectionId,
+  index = 0,
+}: {
+  m: Module;
+  sectionId: string;
+  index?: number;
+}) {
+  const covers = useContext(CoversContext);
+  const thumb = covers[coverKey(sectionId, m.title)] ?? m.thumb;
+
+  const slug = m.title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+  const linkProps = m.moduleId
+    ? ({ to: "/modulo/$id", params: { id: m.moduleId } } as const)
+    : ({ to: "/curso/$slug", params: { slug } } as const);
+
+  return (
+    <Link
+      {...linkProps}
+      className="lure-rise group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface/60 transition active:scale-[0.98]"
+      style={{ "--d": `${index * 70}ms` } as React.CSSProperties}
+    >
+      <div className="relative aspect-square w-full overflow-hidden bg-black">
+        {thumb ? (
+          <img
+            src={thumb}
+            alt=""
+            aria-hidden
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-[#0B152D] to-black">
+            <img src={lureLogo.url} alt="" aria-hidden className="h-12 w-12 object-contain opacity-90" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+        {m.tag && (
+          <span className="absolute left-2.5 top-2.5 rounded-lg bg-black/70 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur">
+            {m.tag}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col px-3.5 pb-3.5 pt-3">
+        <h3 className="line-clamp-2 text-[15px] font-medium leading-snug text-foreground">
+          {m.title}
+        </h3>
+        <div className="mt-3 flex items-center gap-2.5">
+          <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
+            {m.progress}%
+          </span>
+          <span className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+            <span
+              className="block h-full rounded-full gradient-blue transition-all duration-700"
+              style={{ width: `${m.progress}%` }}
+            />
+          </span>
+        </div>
+      </div>
+    </Link>
   );
 }
 

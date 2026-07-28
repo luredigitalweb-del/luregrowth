@@ -293,7 +293,7 @@ function ComunidadePage() {
         </div>
 
         <div className="lg:hidden">
-          <MobileTabBar />
+          <MobileTabBar current="/comunidade" />
         </div>
       </main>
     </div>

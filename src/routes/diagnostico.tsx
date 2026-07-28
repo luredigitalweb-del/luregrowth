@@ -430,7 +430,7 @@ function DiagnosticoPage() {
 
         {stage === "result" && <ResultStage answers={answers} onRestart={reset} />}
 
-        <div className="lg:hidden"><MobileTabBar /></div>
+        <div className="lg:hidden"><MobileTabBar current="/diagnostico" /></div>
       </main>
     </div>
   );
