@@ -27,6 +27,9 @@ function loadYouTubeApi(): Promise<void> {
     };
     const tag = document.createElement("script");
     tag.src = "https://www.youtube.com/iframe_api";
+    // Se o script for bloqueado (adblock/rede), resolve mesmo assim para o
+    // player cair no embed simples em vez de ficar carregando para sempre.
+    tag.onerror = () => resolve();
     document.head.appendChild(tag);
   });
   return ytApiPromise;
@@ -79,6 +82,8 @@ export function LurePlayer({
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(100);
   const [isFs, setIsFs] = useState(false);
+  /** Plano B: se a API não responder, mostramos o embed simples do YouTube. */
+  const [fallback, setFallback] = useState(false);
   const [showUi, setShowUi] = useState(true);
   const hideTimer = useRef<number | undefined>(undefined);
 
@@ -90,11 +95,27 @@ export function LurePlayer({
     setPlaying(false);
     setEnded(false);
     setCurrent(0);
+    setFallback(false);
+
+    // Se em 8s o player não ficou pronto, o embed simples assume.
+    const guard = window.setTimeout(() => {
+      if (!cancelled) setFallback(true);
+    }, 8000);
 
     loadYouTubeApi().then(() => {
       if (cancelled || !hostRef.current) return;
       const YT = (window as any).YT;
-      playerRef.current = new YT.Player(hostRef.current, {
+      if (!YT?.Player) {
+        setFallback(true);
+        return;
+      }
+      // A API do YouTube SUBSTITUI o elemento passado pelo iframe. Por isso
+      // damos a ela um filho descartável: o host continua no DOM e trocar de
+      // aula (ou remontar o componente) sempre encontra um alvo válido.
+      hostRef.current.innerHTML = "";
+      const mount = document.createElement("div");
+      hostRef.current.appendChild(mount);
+      playerRef.current = new YT.Player(mount, {
         videoId: id,
         host: "https://www.youtube-nocookie.com",
         playerVars: {
@@ -111,6 +132,7 @@ export function LurePlayer({
         events: {
           onReady: (e: any) => {
             if (cancelled) return;
+            window.clearTimeout(guard);
             setReady(true);
             const d = e.target.getDuration?.() || 0;
             setDuration(d);
@@ -143,12 +165,14 @@ export function LurePlayer({
 
     return () => {
       cancelled = true;
+      window.clearTimeout(guard);
       try {
         playerRef.current?.destroy?.();
       } catch {
         /* noop */
       }
       playerRef.current = null;
+      if (hostRef.current) hostRef.current.innerHTML = "";
     };
   }, [id]);
 
@@ -259,6 +283,21 @@ export function LurePlayer({
     return (
       <div className={`grid place-items-center bg-black text-sm text-white/60 ${className}`}>
         Vídeo indisponível.
+      </div>
+    );
+  }
+
+  // API indisponível: embed direto, com os controles do próprio YouTube.
+  if (fallback && !ready) {
+    return (
+      <div className={`relative overflow-hidden bg-black ${className}`}>
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1`}
+          title="Aula"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          className="absolute inset-0 h-full w-full border-0"
+        />
       </div>
     );
   }
