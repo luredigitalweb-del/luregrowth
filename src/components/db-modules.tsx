@@ -183,7 +183,7 @@ function ModuleCard({ m }: { m: CardModule }) {
               className="pointer-events-none absolute inset-0"
               style={{
                 background:
-                  "radial-gradient(ellipse 80% 70% at 50% 120%, oklch(0.78 0.11 75 / 0.28), transparent 65%)",
+                  "radial-gradient(ellipse 80% 70% at 50% 120%, rgba(225, 173, 99, 0.28), transparent 65%)",
               }}
             />
             <span className="absolute bottom-3 left-4 font-display text-[11px] font-bold uppercase tracking-[0.28em] text-white/25">

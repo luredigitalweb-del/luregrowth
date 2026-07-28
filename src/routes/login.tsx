@@ -63,7 +63,7 @@ function IntroSplash({ leaving }: { leaving: boolean }) {
       {/* auroras suaves de fundo */}
       <div
         className="lure-aurora lure-aurora-a"
-        style={{ width: 460, height: 460, top: "14%", left: "50%", marginLeft: -230, background: "oklch(0.78 0.11 75 / 0.16)" }}
+        style={{ width: 460, height: 460, top: "14%", left: "50%", marginLeft: -230, background: "rgba(225, 173, 99, 0.16)" }}
       />
 
       <div className="relative flex flex-col items-center">
@@ -71,7 +71,7 @@ function IntroSplash({ leaving }: { leaving: boolean }) {
         <div className="relative grid place-items-center">
           <div
             className="lure-bloom absolute h-56 w-56 rounded-full"
-            style={{ background: "radial-gradient(circle, oklch(0.82 0.11 80 / 0.55), transparent 65%)", filter: "blur(18px)" }}
+            style={{ background: "radial-gradient(circle, rgba(234, 188, 110, 0.55), transparent 65%)", filter: "blur(18px)" }}
           />
           <div className="lure-ring-pulse absolute h-28 w-28 rounded-full border border-primary/40" />
           <img
@@ -121,8 +121,8 @@ function LoginLayout() {
     <div className="min-h-screen">
       {/* ─────────── Formulário centralizado ─────────── */}
       <main className="relative flex min-h-screen items-center justify-center px-6 py-14 sm:px-10">
-        <div className="lure-aurora lure-aurora-a" style={{ width: 420, height: 420, top: "-8%", right: "-6%", background: "oklch(0.78 0.11 75 / 0.16)" }} />
-        <div className="lure-aurora lure-aurora-b" style={{ width: 360, height: 360, bottom: "-10%", left: "-8%", background: "oklch(0.7 0.09 250 / 0.14)" }} />
+        <div className="lure-aurora lure-aurora-a" style={{ width: 420, height: 420, top: "-8%", right: "-6%", background: "rgba(225, 173, 99, 0.16)" }} />
+        <div className="lure-aurora lure-aurora-b" style={{ width: 360, height: 360, bottom: "-10%", left: "-8%", background: "rgba(115, 163, 213, 0.14)" }} />
 
         <div className="relative w-full max-w-md">
           {/* Logo (centralizada, acima do cartão) */}
@@ -228,7 +228,7 @@ function LoginLayout() {
               <button
                 type="submit"
                 disabled={loading}
-                className="lure-rise group relative mt-1 inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl gradient-gold px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-all hover:brightness-110 hover:shadow-[0_0_50px_-6px_oklch(0.78_0.11_75/0.55)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-70"
+                className="lure-rise group relative mt-1 inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl gradient-gold px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-all hover:brightness-110 hover:shadow-[0_0_50px_-6px_rgba(225,173,99,0.55)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-70"
                 style={{ ["--d" as string]: "460ms" }}
               >
                 <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />

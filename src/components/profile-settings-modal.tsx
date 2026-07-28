@@ -145,7 +145,7 @@ export function ProfileSettingsModal() {
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse 70% 120% at 50% -10%, oklch(0.78 0.14 70 / 0.35), transparent 70%)",
+                "radial-gradient(ellipse 70% 120% at 50% -10%, rgba(240, 166, 70, 0.35), transparent 70%)",
             }}
           />
           <button

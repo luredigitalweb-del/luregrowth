@@ -451,12 +451,12 @@ function IntroStage({
       {/* Luzes azuis ao fundo */}
       <div
         className="lure-aurora lure-aurora-a -left-24 top-0 h-[420px] w-[420px]"
-        style={{ background: "oklch(0.62 0.19 250 / 0.28)" }}
+        style={{ background: "rgba(0, 136, 242, 0.28)" }}
         aria-hidden
       />
       <div
         className="lure-aurora lure-aurora-b right-0 top-40 h-[380px] w-[380px]"
-        style={{ background: "oklch(0.70 0.16 220 / 0.20)" }}
+        style={{ background: "rgba(0, 179, 226, 0.20)" }}
         aria-hidden
       />
 
@@ -474,7 +474,7 @@ function IntroStage({
             style={{ "--d": "90ms" } as React.CSSProperties}
           >
             Avalie as principais áreas{" "}
-            <span className="bg-gradient-to-r from-[oklch(0.80_0.13_225)] to-[oklch(0.58_0.19_258)] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#49CFFC] to-[#2275E8] bg-clip-text text-transparent">
               da sua empresa
             </span>
           </h1>
@@ -647,7 +647,7 @@ function QuizStage({
     <section className="relative flex-1 overflow-hidden px-4 py-8 md:px-10 md:py-12">
       <div
         className="lure-aurora lure-aurora-a left-1/4 top-0 h-[380px] w-[380px]"
-        style={{ background: "oklch(0.62 0.19 250 / 0.18)" }}
+        style={{ background: "rgba(0, 136, 242, 0.18)" }}
         aria-hidden
       />
 
@@ -1065,7 +1065,7 @@ function RadarChart({ scores }: { scores: { name: string; avg: number }[] }) {
             key={r}
             points={scores.map((_, i) => point(i, r).join(",")).join(" ")}
             fill="none"
-            stroke="oklch(from var(--base) calc(l + 0.14) c h)"
+            stroke="#232936"
             strokeWidth={0.5}
           />
         ))}
@@ -1079,7 +1079,7 @@ function RadarChart({ scores }: { scores: { name: string; avg: number }[] }) {
               y1={cy}
               x2={x}
               y2={y}
-              stroke="oklch(from var(--base) calc(l + 0.14) c h)"
+              stroke="#232936"
               strokeWidth={0.5}
             />
           );
@@ -1087,14 +1087,14 @@ function RadarChart({ scores }: { scores: { name: string; avg: number }[] }) {
         {/* Filled shape */}
         <polygon
           points={polygon}
-          fill="oklch(0.62 0.19 250 / 0.25)"
-          stroke="oklch(0.70 0.17 245)"
+          fill="rgba(0, 136, 242, 0.25)"
+          stroke="#1AA6FF"
           strokeWidth={1.5}
         />
         {/* Points */}
         {scores.map((s, i) => {
           const [x, y] = point(i, s.avg);
-          return <circle key={i} cx={x} cy={y} r={3} fill="oklch(0.80 0.13 230)" />;
+          return <circle key={i} cx={x} cy={y} r={3} fill="#53CDFF" />;
         })}
         {/* Labels */}
         {scores.map((s, i) => {

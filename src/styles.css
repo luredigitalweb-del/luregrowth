@@ -41,34 +41,34 @@
   /* Darker Lure platform — near-black navy (#050914) */
   --base: #050914;
   --background: #050914;
-  --foreground: oklch(from var(--base) 0.98 c h);
-  --surface: oklch(from var(--base) calc(l + 0.04) c h);
-  --surface-elevated: oklch(from var(--base) calc(l + 0.08) c h);
-  --card: oklch(from var(--base) calc(l + 0.05) c h);
-  --card-foreground: oklch(from var(--base) 0.98 c h);
-  --popover: oklch(from var(--base) calc(l + 0.05) c h);
-  --popover-foreground: oklch(from var(--base) 0.98 c h);
-  --primary: oklch(0.78 0.11 75);
+  --foreground: #F0F9FF;
+  --surface: #0C121D;
+  --surface-elevated: #151B27;
+  --card: #0E1420;
+  --card-foreground: #F0F9FF;
+  --popover: #0E1420;
+  --popover-foreground: #F0F9FF;
+  --primary: #E1AD63;
   --primary-foreground: var(--background);
-  --secondary: oklch(from var(--base) calc(l + 0.06) c h);
-  --secondary-foreground: oklch(from var(--base) 0.98 c h);
-  --muted: oklch(from var(--base) calc(l + 0.05) c h);
-  --muted-foreground: oklch(from var(--base) 0.62 c h);
-  --accent: oklch(0.78 0.11 75);
+  --secondary: #111622;
+  --secondary-foreground: #F0F9FF;
+  --muted: #0E1420;
+  --muted-foreground: #7F8696;
+  --accent: #E1AD63;
   --accent-foreground: var(--background);
   --avatar: #E8A87C;
-  --destructive: oklch(0.6 0.22 27);
-  --destructive-foreground: oklch(from var(--base) 0.98 c h);
-  --border: oklch(from var(--base) calc(l + 0.09) c h);
-  --input: oklch(from var(--base) calc(l + 0.06) c h);
-  --ring: oklch(0.78 0.11 75);
+  --destructive: #E62C2C;
+  --destructive-foreground: #F0F9FF;
+  --border: #171D29;
+  --input: #111622;
+  --ring: #E1AD63;
   /* Azul da identidade (banners/capas) — usado no menu lateral ativo */
-  --nav: oklch(0.68 0.18 250);
+  --nav: #239CFF;
 
-  --gradient-gold: linear-gradient(135deg, oklch(0.82 0.11 80) 0%, oklch(0.72 0.13 65) 100%);
-  --gradient-hero: radial-gradient(ellipse 60% 50% at 50% 100%, oklch(from var(--base) calc(l + 0.16) c h / 0.5), transparent 70%);
-  --shadow-glow: 0 0 80px -10px oklch(0.78 0.11 75 / 0.35);
-  --shadow-card: 0 12px 40px -16px oklch(0 0 0 / 0.55);
+  --gradient-gold: linear-gradient(135deg, #EABC6E 0%, #DC9242 100%);
+  --gradient-hero: radial-gradient(ellipse 60% 50% at 50% 100%, rgba(40, 46, 59, 0.5), transparent 70%);
+  --shadow-glow: 0 0 80px -10px rgba(225, 173, 99, 0.35);
+  --shadow-card: 0 12px 40px -16px rgba(0, 0, 0, 0.55);
 }
 
 /* Light theme override — versão branca com leve tom azulado */
@@ -82,25 +82,25 @@
   --card-foreground: #0B1220;
   --popover: #FFFFFF;
   --popover-foreground: #0B1220;
-  --primary: oklch(0.72 0.13 70);
+  --primary: #D8953D;
   --primary-foreground: #1A1204;
   --secondary: #E7ECF6;
   --secondary-foreground: #0B1220;
   --muted: #E7ECF6;
   --muted-foreground: #5A6478;
-  --accent: oklch(0.72 0.13 70);
+  --accent: #D8953D;
   --accent-foreground: #1A1204;
   --avatar: #E8A87C;
-  --destructive: oklch(0.6 0.22 27);
+  --destructive: #E62C2C;
   --destructive-foreground: #FFFFFF;
   --border: #DDE3EF;
   --input: #E7ECF6;
-  --ring: oklch(0.72 0.13 70);
-  --nav: oklch(0.58 0.19 250);
+  --ring: #D8953D;
+  --nav: #007BE4;
 
-  --gradient-hero: radial-gradient(ellipse 60% 50% at 50% 100%, oklch(0.85 0.05 250 / 0.6), transparent 70%);
-  --shadow-glow: 0 0 80px -10px oklch(0.72 0.13 70 / 0.4);
-  --shadow-card: 0 12px 40px -20px oklch(0.2 0.03 250 / 0.18);
+  --gradient-hero: radial-gradient(ellipse 60% 50% at 50% 100%, rgba(182, 209, 238, 0.6), transparent 70%);
+  --shadow-glow: 0 0 80px -10px rgba(216, 149, 61, 0.4);
+  --shadow-card: 0 12px 40px -20px rgba(11, 23, 35, 0.18);
 }
 
 /* Force dark navy palette on a subtree (used to keep sidebar + top bar dark
@@ -108,27 +108,27 @@
 .dark-scope {
   --base: #050914;
   --background: #050914;
-  --foreground: oklch(from var(--base) 0.98 c h);
-  --surface: oklch(from var(--base) calc(l + 0.04) c h);
-  --surface-elevated: oklch(from var(--base) calc(l + 0.08) c h);
-  --card: oklch(from var(--base) calc(l + 0.05) c h);
-  --card-foreground: oklch(from var(--base) 0.98 c h);
-  --popover: oklch(from var(--base) calc(l + 0.05) c h);
-  --popover-foreground: oklch(from var(--base) 0.98 c h);
-  --primary: oklch(0.78 0.11 75);
+  --foreground: #F0F9FF;
+  --surface: #0C121D;
+  --surface-elevated: #151B27;
+  --card: #0E1420;
+  --card-foreground: #F0F9FF;
+  --popover: #0E1420;
+  --popover-foreground: #F0F9FF;
+  --primary: #E1AD63;
   --primary-foreground: #050914;
-  --secondary: oklch(from var(--base) calc(l + 0.06) c h);
-  --secondary-foreground: oklch(from var(--base) 0.98 c h);
-  --muted: oklch(from var(--base) calc(l + 0.05) c h);
-  --muted-foreground: oklch(from var(--base) 0.62 c h);
-  --accent: oklch(0.78 0.11 75);
+  --secondary: #111622;
+  --secondary-foreground: #F0F9FF;
+  --muted: #0E1420;
+  --muted-foreground: #7F8696;
+  --accent: #E1AD63;
   --accent-foreground: #050914;
-  --border: oklch(from var(--base) calc(l + 0.09) c h);
-  --input: oklch(from var(--base) calc(l + 0.06) c h);
-  --ring: oklch(0.78 0.11 75);
-  --nav: oklch(0.68 0.18 250);
-  --shadow-glow: 0 0 80px -10px oklch(0.78 0.11 75 / 0.35);
-  --shadow-card: 0 12px 40px -16px oklch(0 0 0 / 0.55);
+  --border: #171D29;
+  --input: #111622;
+  --ring: #E1AD63;
+  --nav: #239CFF;
+  --shadow-glow: 0 0 80px -10px rgba(225, 173, 99, 0.35);
+  --shadow-card: 0 12px 40px -16px rgba(0, 0, 0, 0.55);
   background-color: var(--background);
   color: var(--foreground);
 }
@@ -150,13 +150,13 @@
 }
 
 @utility glow-text {
-  text-shadow: 0 0 40px oklch(0.75 0.18 55 / 0.6);
+  text-shadow: 0 0 40px rgba(255, 137, 24, 0.6);
 }
 @utility gradient-gold {
   background: var(--gradient-gold);
 }
 @utility gradient-blue {
-  background: linear-gradient(135deg, oklch(0.74 0.15 235) 0%, oklch(0.58 0.19 258) 100%);
+  background: linear-gradient(135deg, #22B8FB 0%, #2275E8 100%);
 }
 @utility surface-card {
   background-color: var(--color-surface);
@@ -233,13 +233,13 @@
   left: 0; right: 0; top: 0;
   height: 34%;
   pointer-events: none;
-  background: linear-gradient(to bottom, transparent, oklch(0.85 0.11 80 / 0.14), transparent);
+  background: linear-gradient(to bottom, transparent, rgba(244, 198, 119, 0.14), transparent);
   animation: lure-scan 9s linear infinite;
 }
 
 /* Animated gold hairline under the logo */
 .lure-hairline {
-  background-image: linear-gradient(90deg, transparent, oklch(0.85 0.11 80 / 0.9), transparent);
+  background-image: linear-gradient(90deg, transparent, rgba(244, 198, 119, 0.9), transparent);
   background-size: 200% 100%;
   animation: lure-shimmer 4.5s linear infinite;
 }
@@ -337,4 +337,64 @@
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
   }
+}
+
+/* ============================================================
+   Compatibilidade com Safari antigo (iPhone 7 / iOS 15)
+   ------------------------------------------------------------
+   O Tailwind v4 escreve toda classe com transparencia
+   (bg-surface/75, border-white/10, text-white/70...) usando
+   color-mix(). Safari < 16.2 descarta essas declaracoes, o que
+   deixa fundos transparentes e texto ilegivel. Aqui devolvemos
+   cores solidas equivalentes — e so nesses navegadores.
+   ============================================================ */
+@supports not (color: color-mix(in oklab, red, red)) {
+  /* Fundos translucidos viram solidos */
+  [class*="bg-background/"] { background-color: var(--background) !important; }
+  [class*="bg-surface/"]    { background-color: var(--surface) !important; }
+  [class*="bg-surface-elevated/"] { background-color: var(--surface-elevated) !important; }
+  [class*="bg-card/"]       { background-color: var(--card) !important; }
+  [class*="bg-muted/"]      { background-color: var(--muted) !important; }
+  [class*="bg-black/"]      { background-color: rgba(0, 0, 0, 0.55) !important; }
+  [class*="bg-white/"]      { background-color: rgba(255, 255, 255, 0.12) !important; }
+  [class*="bg-primary/"]    { background-color: rgba(225, 173, 99, 0.16) !important; }
+  [class*="bg-[var(--nav)]/"] { background-color: rgba(35, 156, 255, 0.16) !important; }
+
+  /* Bordas translucidas */
+  [class*="border-border/"] { border-color: var(--border) !important; }
+  [class*="border-white/"]  { border-color: rgba(255, 255, 255, 0.12) !important; }
+  [class*="border-primary/"]{ border-color: rgba(225, 173, 99, 0.35) !important; }
+  [class*="border-[var(--nav)]/"] { border-color: rgba(35, 156, 255, 0.35) !important; }
+
+  /* Texto translucido — mantem legivel */
+  [class*="text-white/"]      { color: #DCE6F2 !important; }
+  [class*="text-foreground/"] { color: var(--foreground) !important; }
+  [class*="text-muted-foreground/"] { color: var(--muted-foreground) !important; }
+
+  /* Sem suporte a backdrop-filter: o fundo solido acima ja resolve */
+  [class*="backdrop-blur"] { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+  /* Overlays de leitura sobre foto — gradiente escrito em rgba puro */
+  .compat-scrim-x {
+    background: linear-gradient(to right, #050914 0%, rgba(5, 9, 20, 0.88) 45%, rgba(5, 9, 20, 0) 100%) !important;
+  }
+  .compat-scrim-y {
+    background: linear-gradient(to top, #050914 0%, rgba(5, 9, 20, 0) 60%) !important;
+  }
+
+  /* Paleta do Tailwind tambem vem em oklch — versoes em hex para o Safari antigo */
+  .text-red-300 { color: #FCA5A5 !important; }
+  .text-red-400 { color: #F87171 !important; }
+  .text-red-500 { color: #EF4444 !important; }
+  .text-emerald-400 { color: #34D399 !important; }
+  .text-amber-400 { color: #FBBF24 !important; }
+  [class*="bg-red-500"] { background-color: #EF4444 !important; }
+  [class*="bg-emerald-500"] { background-color: #10B981 !important; }
+  [class*="bg-emerald-400"] { background-color: #34D399 !important; }
+  [class*="bg-green-500"] { background-color: #22C55E !important; }
+  [class*="bg-amber-500"] { background-color: #F59E0B !important; }
+  [class*="border-red-500"] { border-color: #EF4444 !important; }
+  [class*="border-emerald-500"] { border-color: #10B981 !important; }
+  [class*="border-emerald-400"] { border-color: #34D399 !important; }
+  [class*="border-amber-500"] { border-color: #F59E0B !important; }
 }

@@ -194,7 +194,7 @@ function CourseCard({ m, covers }: { m: EnrichedModule; covers: Record<string, s
               className="h-20 w-20 object-contain opacity-90 transition duration-500 group-hover:scale-105"
             />
           </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-[radial-gradient(ellipse_70%_90%_at_50%_100%,oklch(0.62_0.19_250/0.28),transparent_70%)]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-[radial-gradient(ellipse_70%_90%_at_50%_100%,rgba(0,136,242,0.28),transparent_70%)]" />
         </>
       )}
 
@@ -261,7 +261,7 @@ function CertificateCard({ m }: { m: EnrichedModule }) {
           className="pointer-events-none absolute inset-0 opacity-70"
           style={{
             background:
-              "radial-gradient(ellipse 90% 60% at 50% 100%, oklch(0.78 0.14 70 / 0.35), transparent 65%)",
+              "radial-gradient(ellipse 90% 60% at 50% 100%, rgba(240, 166, 70, 0.35), transparent 65%)",
           }}
         />
         <div className="absolute inset-3 rounded-xl border border-primary/40" />

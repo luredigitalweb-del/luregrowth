@@ -744,7 +744,7 @@ function MobileHero() {
       onTouchStart={() => setPaused(true)}
       onTouchEnd={() => setPaused(false)}
     >
-      <div className="relative overflow-hidden rounded-[26px] border border-white/10 shadow-[0_24px_60px_-30px_oklch(0_0_0/0.9)]">
+      <div className="relative overflow-hidden rounded-[26px] border border-white/10 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
         <div
           ref={scrollerRef}
           onScroll={onScroll}
@@ -761,13 +761,13 @@ function MobileHero() {
                 decoding="async"
                 className="absolute inset-y-0 right-0 h-full w-[68%] object-cover object-center"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#050914] via-[#050914]/85 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#050914] via-transparent to-transparent" />
+              <div className="compat-scrim-x absolute inset-0 bg-gradient-to-r from-[#050914] via-[#050914]/85 to-transparent" />
+              <div className="compat-scrim-y absolute inset-0 bg-gradient-to-t from-[#050914] via-transparent to-transparent" />
               <div
                 className="pointer-events-none absolute inset-0"
                 style={{
                   background:
-                    "radial-gradient(ellipse 70% 60% at 85% 60%, oklch(0.62 0.19 250 / 0.35), transparent 70%)",
+                    "radial-gradient(ellipse 70% 60% at 85% 60%, rgba(0, 136, 242, 0.35), transparent 70%)",
                 }}
               />
 
@@ -831,7 +831,7 @@ export function MobileTabBar({ current = "/" }: { current?: string }) {
         className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-28 bg-gradient-to-t from-background via-background/85 to-transparent"
         aria-hidden
       />
-      <ul className="mx-auto flex max-w-[360px] items-center justify-between rounded-full border border-white/10 bg-surface/75 px-1.5 py-1.5 shadow-[0_12px_32px_-10px_oklch(0_0_0/0.9)] backdrop-blur-2xl">
+      <ul className="mx-auto flex max-w-[360px] items-center justify-between rounded-full border border-white/10 bg-surface/75 px-1.5 py-1.5 shadow-[0_12px_32px_-10px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
         {items.map((it) => {
           const active = it.to === current;
           return (
@@ -1239,7 +1239,7 @@ export function TopBar() {
   const email = profile?.email || session?.user?.email;
   const roleLabel = isAdmin ? "Administrador" : "Membro";
   return (
-    <header className="dark-scope sticky top-0 z-30 flex h-18 items-center justify-between gap-4 border-b border-border/50 bg-background/90 px-6 md:px-10 backdrop-blur-xl shadow-[0_10px_30px_-20px_oklch(0_0_0/0.6)]">
+    <header className="dark-scope sticky top-0 z-30 flex h-18 items-center justify-between gap-4 border-b border-border/50 bg-background/90 px-6 md:px-10 backdrop-blur-xl shadow-[0_10px_30px_-20px_rgba(0,0,0,0.6)]">
       <div className="flex items-center gap-3 rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-foreground shadow-sm">
         <Search className="h-4 w-4 text-muted-foreground" />
         <input
@@ -1412,7 +1412,7 @@ export function MobileModuleCard({
             <img src={lureLogo.url} alt="" aria-hidden className="h-12 w-12 object-contain opacity-90" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+        <div className="compat-scrim-y absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
         {m.tag && (
           <span className="absolute left-2.5 top-2.5 rounded-lg bg-black/70 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur">
             {m.tag}
@@ -1443,7 +1443,7 @@ export function MobileModuleCard({
 function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
   // Cor neutra e fixa para todos os cards — sem paleta colorida
   const accentBar = "bg-foreground/70";
-  const glow = "oklch(from var(--foreground) l c h / 0.12)";
+  const glow = "rgba(240, 249, 255, 0.12)";
 
   // Capa salva no painel admin (banco) tem prioridade sobre a imagem fixa do código.
   const covers = useContext(CoversContext);

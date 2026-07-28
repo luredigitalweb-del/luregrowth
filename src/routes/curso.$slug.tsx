@@ -421,7 +421,7 @@ function CoursePage() {
                     cy="18"
                     r="15.5"
                     fill="none"
-                    stroke="oklch(0.78 0.14 70)"
+                    stroke="#F0A646"
                     strokeWidth="3"
                     strokeLinecap="round"
                     strokeDasharray={`${(progress / 100) * 97.4} 97.4`}
@@ -463,7 +463,7 @@ function CoursePage() {
                     <div
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
                         isProva
-                          ? "bg-[oklch(0.62_0.19_255)]/20 text-[oklch(0.75_0.15_255)]"
+                          ? "bg-[#1D84F5]/20 text-[#68B0FF]"
                           : isDone
                             ? "bg-emerald-500/15 text-emerald-400"
                             : isActive
