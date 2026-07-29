@@ -69,6 +69,8 @@ export function LurePlayer({
   const hostRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
+  /** Enquanto true, estamos so enchendo o buffer em mudo — nao e o play do usuario. */
+  const warmingRef = useRef(false);
   const endedCb = useRef(onEnded);
   endedCb.current = onEnded;
   const cbs = useRef({ onDuration, onPlayingChange, onTime });
@@ -86,9 +88,10 @@ export function LurePlayer({
   const [fallback, setFallback] = useState(false);
   /** Vira true no primeiro play: antes disso a capa esconde a marca do YouTube. */
   const [started, setStarted] = useState(false);
-  /** A capa so sai do DOM depois de sumir por completo. */
-  const [coverGone, setCoverGone] = useState(false);
-  const [coverFading, setCoverFading] = useState(false);
+  /** Segura a capa por alguns segundos depois do play (avisos do YouTube). */
+  const [coverHold, setCoverHold] = useState(false);
+  const startedRef = useRef(false);
+  startedRef.current = started;
   const [showUi, setShowUi] = useState(true);
   const hideTimer = useRef<number | undefined>(undefined);
 
@@ -102,8 +105,7 @@ export function LurePlayer({
     setCurrent(0);
     setFallback(false);
     setStarted(false);
-    setCoverGone(false);
-    setCoverFading(false);
+    setCoverHold(false);
 
     // Se em 8s o player não ficou pronto, o embed simples assume.
     const guard = window.setTimeout(() => {
@@ -163,9 +165,29 @@ export function LurePlayer({
             } catch {
               /* noop */
             }
+            // Enche o buffer em mudo para o play do aluno comecar na hora
+            try {
+              warmingRef.current = true;
+              e.target.mute?.();
+              e.target.playVideo?.();
+            } catch {
+              warmingRef.current = false;
+            }
           },
           onStateChange: (e: any) => {
             const S = (window as any).YT.PlayerState;
+            // Aquecimento: assim que comeca a rodar em mudo, pausa e volta ao inicio
+            if (warmingRef.current && e.data === S.PLAYING) {
+              warmingRef.current = false;
+              try {
+                e.target.pauseVideo?.();
+                e.target.seekTo?.(0, true);
+                e.target.unMute?.();
+              } catch {
+                /* noop */
+              }
+              return;
+            }
             if (e.data === S.PLAYING) {
               setPlaying(true);
               setStarted(true);
@@ -182,6 +204,7 @@ export function LurePlayer({
               if (d) cbs.current.onDuration?.(d);
               cbs.current.onPlayingChange?.(true);
             } else if (e.data === S.PAUSED) {
+              if (!startedRef.current) return; // pausa do aquecimento
               setPlaying(false);
               cbs.current.onPlayingChange?.(false);
             } else if (e.data === S.ENDED) {
@@ -211,14 +234,11 @@ export function LurePlayer({
   // A capa fica mais 1.2s depois do play (tempo dos avisos do YouTube) e
   // some em seguida, ja com o video rodando por tras.
   useEffect(() => {
-    if (!started) return;
-    const fade = window.setTimeout(() => setCoverFading(true), 1200);
-    const gone = window.setTimeout(() => setCoverGone(true), 2100);
-    return () => {
-      window.clearTimeout(fade);
-      window.clearTimeout(gone);
-    };
-  }, [started]);
+    if (!playing) return;
+    setCoverHold(true);
+    const t = window.setTimeout(() => setCoverHold(false), 1600);
+    return () => window.clearTimeout(t);
+  }, [playing]);
 
   // Atualiza o tempo enquanto toca.
   useEffect(() => {
@@ -356,39 +376,40 @@ export function LurePlayer({
       onMouseLeave={() => playing && setShowUi(false)}
     >
       {/* Host do YouTube (iframe injetado aqui). pointer-events off = nenhum clique
-          chega no YT. O quadro e ampliado ~16%: a barra de titulo do topo e o selo
-          do YouTube no rodape ficam fora da area visivel. */}
+          nem hover chega no YT, entao a barra de titulo e o "Assistir no YouTube"
+          nao sao acionados. O video ocupa 100% — sem zoom. */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
           ref={hostRef}
-          className="absolute left-1/2 top-1/2 h-[116%] w-[116%] -translate-x-1/2 -translate-y-1/2 [&>iframe]:h-full [&>iframe]:w-full"
+          className="absolute left-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 [&>iframe]:h-full [&>iframe]:w-full"
         />
       </div>
 
       {/* Máscara superior — mata a barra de título do YouTube durante a reprodução */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-black via-black/70 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-black via-black/65 to-transparent" />
 
-      {/* Capa: antes do primeiro play, cobre o player inteiro com a thumb do
-          proprio video — assim nada da interface do YouTube (titulo, canal,
-          "Ver no YouTube", botao vermelho) chega a aparecer. */}
-      {!coverGone && (
-        <div
-          className={`pointer-events-none absolute inset-0 z-20 overflow-hidden transition-opacity duration-700 ${
-            coverFading ? "opacity-0" : "opacity-100"
-          }`}
-        >
-          <img
-            src={`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 h-full w-full object-cover"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-            }}
-          />
-          <div className="absolute inset-0 bg-black/35" />
-        </div>
-      )}
+      {/* Máscara inferior — sempre presente, cobre onde o selo do YouTube aparece */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t from-black via-black/70 to-transparent" />
+
+      {/* Capa: cobre o player sempre que o video nao esta rodando (inicio, pausa,
+          fim) e ainda segura ~1.6s depois do play, tempo em que o YouTube mostra
+          titulo e canal. Assim a marca dele nunca aparece. */}
+      <div
+        className={`pointer-events-none absolute inset-0 z-20 overflow-hidden transition-opacity duration-500 ${
+          !playing || coverHold ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <img
+          src={`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+          }}
+        />
+        <div className="absolute inset-0 bg-black/45" />
+      </div>
 
       {/* Escudo de clique: bloqueia hover/click do YT e faz play/pause */}
       <button
