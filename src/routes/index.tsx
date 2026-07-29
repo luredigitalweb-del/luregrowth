@@ -722,14 +722,14 @@ function MobileHero() {
       />
 
       {/* Texto na esquerda */}
-      <div className="relative flex min-h-[300px] max-w-[62%] flex-col justify-center py-9 pl-5 pr-2">
-        <p className="text-[13.5px] font-normal text-white/85">{MOBILE_HERO.eyebrow}</p>
-        <h1 className="mt-0.5 font-display text-[27px] font-bold leading-[1.06] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
+      <div className="relative flex min-h-[300px] max-w-[55%] flex-col justify-center py-8 pl-5 pr-1">
+        <p className="text-[12px] font-normal text-white/85">{MOBILE_HERO.eyebrow}</p>
+        <h1 className="mt-0.5 font-display text-[23px] font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
           {MOBILE_HERO.title}
         </h1>
-        <div className="mt-3 space-y-2">
+        <div className="mt-2.5 space-y-1.5">
           {MOBILE_HERO.lines.map((l) => (
-            <p key={l} className="text-[12.5px] leading-relaxed text-white/70">
+            <p key={l} className="text-[11px] leading-relaxed text-white/70">
               {l}
             </p>
           ))}
@@ -737,7 +737,7 @@ function MobileHero() {
         <Link
           to={MOBILE_HERO.to}
           search={{ tab: "andamento" as const }}
-          className="group relative mt-5 inline-flex w-fit items-center gap-2 overflow-hidden rounded-full gradient-blue px-5 py-3 text-[13px] font-semibold text-white shadow-[0_10px_26px_-10px_var(--nav)] transition active:scale-95"
+          className="group relative mt-4 inline-flex w-fit items-center gap-2 overflow-hidden rounded-full gradient-blue px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_10px_26px_-10px_var(--nav)] transition active:scale-95"
         >
           <span
             className="diag-sweep pointer-events-none absolute inset-y-0 -left-6 w-12 bg-white/30 blur-md"
@@ -1242,10 +1242,15 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
     <section className="mt-10 lg:mt-14">
       <div className="mb-4 flex items-end justify-between gap-3 lg:mb-5">
         <div className="min-w-0">
-          <h2 className="font-display text-[19px] font-bold tracking-[0.14em] lg:text-xl lg:tracking-[0.15em]">
-            {section.title}
+          <div className="flex items-center gap-2">
+            <span className="h-3 w-[3px] shrink-0 rounded-full bg-[var(--nav)]" aria-hidden />
+            <span className="truncate text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--nav)]">
+              {section.title}
+            </span>
+          </div>
+          <h2 className="mt-1.5 font-display text-[17px] font-semibold leading-snug tracking-tight text-foreground lg:text-[19px]">
+            {section.subtitle}
           </h2>
-          <p className="mt-1 text-[13px] text-muted-foreground lg:text-sm">{section.subtitle}</p>
         </div>
         <div className="flex shrink-0 items-center gap-4 text-sm text-muted-foreground">
           <span className="hidden lg:inline">{section.modules.length} módulos</span>
