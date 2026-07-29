@@ -682,6 +682,7 @@ const MOBILE_HERO = {
 function MobileHero() {
   return (
     <section className="relative overflow-hidden">
+      {/* Video na metade direita */}
       <video
         src={MOBILE_HERO.video}
         poster={MOBILE_HERO.poster}
@@ -691,51 +692,43 @@ function MobileHero() {
         playsInline
         preload="none"
         aria-hidden
-        className="absolute inset-y-0 -right-px h-full w-full object-cover object-[68%_center]"
+        className="absolute inset-y-0 -right-px h-full w-[calc(66%_+_2px)] object-cover object-[58%_center]"
         style={{
-          // Em vez de terminar num corte reto, o video se dissolve na esquerda
-          WebkitMaskImage:
-            "linear-gradient(100deg, transparent 0%, rgba(0,0,0,0.45) 14%, rgba(0,0,0,0.9) 30%, #000 44%)",
-          maskImage:
-            "linear-gradient(100deg, transparent 0%, rgba(0,0,0,0.45) 14%, rgba(0,0,0,0.9) 30%, #000 44%)",
+          // dissolve so a beirada esquerda, sem corte reto
+          WebkitMaskImage: "linear-gradient(to right, transparent 0%, #000 16%)",
+          maskImage: "linear-gradient(to right, transparent 0%, #000 16%)",
         }}
       />
 
-      {/* Escurecimento suave do lado do texto */}
+      {/* Escurecimento do lado do texto */}
       <div
         className="compat-scrim-x pointer-events-none absolute inset-0"
         style={{
           background:
-            "linear-gradient(100deg, rgba(5,9,20,0.92) 0%, rgba(5,9,20,0.55) 40%, rgba(5,9,20,0.12) 66%, rgba(5,9,20,0) 88%)",
+            "linear-gradient(100deg, rgba(5,9,20,0.96) 0%, rgba(5,9,20,0.80) 34%, rgba(5,9,20,0.20) 58%, rgba(5,9,20,0) 78%)",
         }}
-        aria-hidden
-      />
-      <div
-        className="compat-scrim-y pointer-events-none absolute inset-0"
-        style={{ background: "linear-gradient(to top, rgba(5,9,20,0.55) 0%, rgba(5,9,20,0) 40%)" }}
         aria-hidden
       />
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 70% 60% at 85% 60%, rgba(35,156,255,0.22), transparent 70%)",
+            "radial-gradient(ellipse 65% 60% at 88% 65%, rgba(35,156,255,0.22), transparent 70%)",
         }}
         aria-hidden
       />
 
-      <div className="relative flex min-h-[320px] flex-col justify-center px-6 py-9">
-        <h1 className="font-display text-[30px] font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
-          <span className="block text-[18px] font-normal text-white/90">{MOBILE_HERO.eyebrow}</span>
+      {/* Texto na esquerda */}
+      <div className="relative flex min-h-[300px] max-w-[62%] flex-col justify-center py-9 pl-5 pr-2">
+        <p className="text-[13.5px] font-normal text-white/85">{MOBILE_HERO.eyebrow}</p>
+        <h1 className="mt-0.5 font-display text-[27px] font-bold leading-[1.06] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
           {MOBILE_HERO.title}
         </h1>
-        <p className="mt-3.5 max-w-[58%] text-[12.5px] leading-relaxed text-white/70">
-          {MOBILE_HERO.line}
-        </p>
+        <p className="mt-2.5 text-[12px] leading-relaxed text-white/65">{MOBILE_HERO.line}</p>
         <Link
           to={MOBILE_HERO.to}
           search={{ tab: "andamento" as const }}
-          className="group relative mt-6 inline-flex w-fit items-center gap-2 overflow-hidden rounded-full gradient-blue px-5 py-3 text-[13.5px] font-semibold text-white shadow-[0_10px_28px_-10px_var(--nav)] transition active:scale-95"
+          className="group relative mt-5 inline-flex w-fit items-center gap-2 overflow-hidden rounded-full gradient-blue px-5 py-3 text-[13px] font-semibold text-white shadow-[0_10px_26px_-10px_var(--nav)] transition active:scale-95"
         >
           <span
             className="diag-sweep pointer-events-none absolute inset-y-0 -left-6 w-12 bg-white/30 blur-md"
