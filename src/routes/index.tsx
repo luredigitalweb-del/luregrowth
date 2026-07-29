@@ -689,7 +689,7 @@ function MobileHero() {
         muted
         loop
         playsInline
-        preload="metadata"
+        preload="none"
         aria-hidden
         className="absolute inset-y-0 -right-px h-full w-[calc(68%_+_2px)] object-cover object-center"
       />
