@@ -672,7 +672,10 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 const MOBILE_HERO = {
   eyebrow: "Bem-vindo ao",
   title: "LURE Growth",
-  line: "A plataforma oficial da agência que já rodou +R$100M em mídia.",
+  lines: [
+    "A plataforma oficial da agência que já rodou +R$100M em mídia.",
+    "Trilhas guiadas, mentorias ao vivo e a comunidade que cresce junto com você.",
+  ],
   cta: "Explorar agora",
   to: "/meus-cursos",
   poster: "/banner-boas-vindas.jpg",
@@ -724,7 +727,13 @@ function MobileHero() {
         <h1 className="mt-0.5 font-display text-[27px] font-bold leading-[1.06] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
           {MOBILE_HERO.title}
         </h1>
-        <p className="mt-2.5 text-[12px] leading-relaxed text-white/65">{MOBILE_HERO.line}</p>
+        <div className="mt-3 space-y-2">
+          {MOBILE_HERO.lines.map((l) => (
+            <p key={l} className="text-[12.5px] leading-relaxed text-white/70">
+              {l}
+            </p>
+          ))}
+        </div>
         <Link
           to={MOBILE_HERO.to}
           search={{ tab: "andamento" as const }}
