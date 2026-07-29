@@ -56,6 +56,19 @@ function deslug(slug: string) {
     .join(" ");
 }
 
+type LessonMeta = { url?: string; title?: string; description?: string; duration?: number };
+
+/** Segundos -> "m:ss" (ou "h:mm:ss"). Devolve undefined quando nao ha duracao. */
+function fmtDuration(secs?: number) {
+  if (!secs || secs <= 0) return undefined;
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const sec = Math.floor(secs % 60);
+  return h > 0
+    ? `${h}:${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`
+    : `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
 type Lesson = {
   n: number;
   title: string;
@@ -115,16 +128,7 @@ function CoursePage() {
     if (nextLesson) setCurrentLesson(nextLesson.n);
   };
 
-  // Duração formatada mm:ss
-  const fmtDur = (s?: number) => {
-    if (!s || s <= 0) return null;
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, "0")}`;
-  };
-
   // Metadados por aula (vídeo + título/descrição editáveis + duração), do banco
-  type LessonMeta = { url?: string; title?: string; description?: string; duration?: number };
   const [videos, setVideos] = useState<Record<number, LessonMeta>>({});
   const currentMeta = videos[currentLesson] ?? {};
   const currentUrl = currentMeta.url;
@@ -133,7 +137,7 @@ function CoursePage() {
     "Aprenda como transformar suas redes sociais em uma máquina previsível de vendas de alto ticket. Nesta aula, vamos desconstruir o processo exato que os maiores players do mercado utilizam para atrair, engajar e converter desconhecidos em clientes fiéis.";
   const displayTitle = currentMeta.title || active.title;
   const displayDesc = currentMeta.description || DEFAULT_DESC;
-  const displayDuration = fmtDur(currentMeta.duration) ?? active.duration;
+  const displayDuration = fmtDuration(currentMeta.duration) ?? active.duration;
 
   const loadVideos = useCallback(async () => {
     const { data } = await supabase
@@ -264,24 +268,37 @@ function CoursePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Top nav */}
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/90 px-6 backdrop-blur-xl md:px-10">
-        <div className="flex items-center gap-4">
+      <header
+        className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/90 px-3 pb-3 backdrop-blur-xl md:px-10"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-4">
+          {/* No PWA a barra de status cobre o topo — botao grande e afastado dela */}
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-surface text-foreground transition active:scale-95 md:h-9 md:w-auto md:gap-2 md:rounded-lg md:border-0 md:bg-transparent md:px-0 md:text-sm md:text-muted-foreground md:hover:text-foreground"
           >
-            <ChevronLeft className="h-4 w-4" /> Voltar
+            <ChevronLeft className="h-5 w-5 md:h-4 md:w-4" />
+            <span className="hidden md:inline">Voltar</span>
           </Link>
           <div className="hidden h-6 w-px bg-border md:block" />
           <div className="hidden items-center gap-2 md:flex">
             <img src={lureLogo.url} alt="Lure" className="h-6 w-6 object-contain" />
             <span className="text-sm font-semibold tracking-wider">LURE Growth</span>
           </div>
+          {/* No mobile o titulo do curso ocupa o centro */}
+          <div className="min-w-0 flex-1 md:hidden">
+            <div className="truncate text-[13px] font-semibold leading-tight">{courseTitle}</div>
+            <div className="text-[11px] leading-tight text-muted-foreground">
+              Aula {active.n} de {lessons.length}
+            </div>
+          </div>
         </div>
         <button
           onClick={openSettings}
           title="Editar perfil"
-          className="flex items-center gap-3 rounded-full py-1 pl-3 pr-1 text-xs text-muted-foreground transition hover:bg-surface"
+          className="flex shrink-0 items-center gap-3 rounded-full py-1 pl-3 pr-1 text-xs text-muted-foreground transition hover:bg-surface"
         >
           <span className="hidden md:inline">
             {profile?.full_name || profile?.email?.split("@")[0] || "Aluno LURE"} ·{" "}
@@ -291,7 +308,7 @@ function CoursePage() {
             url={profile?.avatar_url}
             name={profile?.full_name}
             email={profile?.email}
-            className="h-8 w-8"
+            className="h-9 w-9"
             textClassName="text-[11px]"
           />
         </button>
@@ -317,8 +334,8 @@ function CoursePage() {
               <span className="h-1 w-5 rounded-full bg-primary" />
               {courseTitle}
             </div>
-            <h1 className="mt-2.5 font-display text-xl font-bold leading-tight sm:text-2xl lg:text-3xl">
-              <span className="text-muted-foreground">Aula {active.n}: </span>
+            <h1 className="mt-2 font-display text-[19px] font-bold leading-snug sm:text-2xl lg:text-3xl">
+              <span className="mr-1.5 hidden text-muted-foreground sm:inline">Aula {active.n}:</span>
               <InlineTitle
                 value={displayTitle}
                 canEdit={isAdmin}
@@ -329,20 +346,20 @@ function CoursePage() {
 
             {/* Meta chips */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:text-xs">
                 <Clock className="h-3.5 w-3.5" /> {displayDuration}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:text-xs">
                 <Play className="h-3 w-3 fill-current" /> Aula {active.n} de {lessons.length}
               </span>
               {isCurrentDone && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-400">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 sm:text-xs">
                   <CheckCircle2 className="h-3.5 w-3.5" /> Concluída
                 </span>
               )}
             </div>
 
-            <div className="mt-4">
+            <div className="mt-3.5 text-[13.5px] leading-relaxed sm:text-sm">
               <InlineText
                 value={displayDesc}
                 canEdit={isAdmin}
@@ -352,10 +369,10 @@ function CoursePage() {
             </div>
 
             {/* Ações principais */}
-            <div className="mt-5 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="mt-5 flex flex-row flex-wrap items-center gap-2.5">
               <button
                 onClick={() => toggleComplete(active.n)}
-                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-[13px] font-semibold transition sm:flex-none sm:text-sm ${
                   isCurrentDone
                     ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15"
                     : "border-border bg-surface hover:bg-muted"
@@ -374,7 +391,7 @@ function CoursePage() {
               {!isLast && (
                 <button
                   onClick={goNext}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl gradient-gold px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:brightness-110"
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl gradient-gold px-4 py-3 text-[13px] font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:brightness-110 sm:flex-none sm:text-sm"
                 >
                   Próxima aula <ArrowRight className="h-4 w-4" />
                 </button>
@@ -384,6 +401,34 @@ function CoursePage() {
             {/* Materiais da aula */}
             <LessonMaterials slug={slug} lessonN={active.n} isAdmin={isAdmin} userId={session?.user?.id} />
           </div>
+
+          {/* Conteúdo do curso — no mobile vem logo abaixo da aula */}
+          <section className="border-b border-border px-4 py-5 sm:px-6 lg:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <ListChecks className="h-3.5 w-3.5" /> Conteúdo do curso
+              </div>
+              <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                {doneCount}/{lessons.length} concluídas
+              </span>
+            </div>
+
+            <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
+              <div
+                className="h-full rounded-full gradient-gold transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+
+            <LessonList
+              lessons={lessons}
+              currentLesson={currentLesson}
+              setCurrentLesson={setCurrentLesson}
+              completed={completed}
+              videos={videos}
+              className="mt-3"
+            />
+          </section>
 
           {/* Comments */}
           <CommentsSection
@@ -395,7 +440,7 @@ function CoursePage() {
         </main>
 
         {/* Lessons sidebar */}
-        <aside className="flex flex-col border-t border-border bg-surface/40 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:border-l lg:border-t-0">
+        <aside className="hidden flex-col border-border bg-surface/40 lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-4rem)] lg:border-l">
           {/* Header do painel */}
           <div className="shrink-0 border-b border-border p-4 lg:p-5">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -440,71 +485,14 @@ function CoursePage() {
           </div>
 
           {/* Lista de aulas */}
-          <ul className="flex-1 space-y-1 overflow-y-auto p-2.5">
-            {lessons.map((l) => {
-              const isActive = l.n === currentLesson;
-              const isProva = l.kind === "prova";
-              const isDone = completed.has(l.n);
-              const hasVideo = !!videos[l.n]?.url;
-              return (
-                <li key={l.n}>
-                  <button
-                    onClick={() => !l.locked && setCurrentLesson(l.n)}
-                    disabled={l.locked}
-                    className={`group relative flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition ${
-                      isActive
-                        ? "border-primary/40 bg-primary/10 shadow-[var(--shadow-glow)]"
-                        : "border-transparent hover:border-border hover:bg-background"
-                    } ${l.locked ? "cursor-not-allowed opacity-60" : ""}`}
-                  >
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
-                    )}
-                    <div
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
-                        isProva
-                          ? "bg-[#1D84F5]/20 text-[#68B0FF]"
-                          : isDone
-                            ? "bg-emerald-500/15 text-emerald-400"
-                            : isActive
-                              ? "gradient-gold text-primary-foreground"
-                              : "bg-background text-muted-foreground"
-                      }`}
-                    >
-                      {isProva ? (
-                        <Award className="h-5 w-5" />
-                      ) : l.locked ? (
-                        <Lock className="h-4 w-4" />
-                      ) : isDone ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : isActive ? (
-                        <Play className="h-4 w-4 fill-current" />
-                      ) : (
-                        l.n
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div
-                        className={`truncate text-sm font-semibold ${isActive ? "text-primary" : ""}`}
-                      >
-                        {videos[l.n]?.title ?? l.title}
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                        {isProva ? (
-                          "Certificado de Conclusão"
-                        ) : (
-                          <>
-                            <Clock className="h-3 w-3" /> {fmtDur(videos[l.n]?.duration) ?? l.duration}
-                            {hasVideo && <Youtube className="ml-1 h-3 w-3 text-red-500" />}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <LessonList
+            lessons={lessons}
+            currentLesson={currentLesson}
+            setCurrentLesson={setCurrentLesson}
+            completed={completed}
+            videos={videos}
+            className="flex-1 overflow-y-auto p-2.5"
+          />
 
           {/* Rodapé — suporte */}
           <div className="shrink-0 border-t border-border p-4">
@@ -527,6 +515,92 @@ function CoursePage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+/* ---------------- Lista de aulas (usada no painel e no mobile) ---------------- */
+
+function LessonList({
+  lessons,
+  currentLesson,
+  setCurrentLesson,
+  completed,
+  videos,
+  className = "",
+}: {
+  lessons: Lesson[];
+  currentLesson: number;
+  setCurrentLesson: (n: number) => void;
+  completed: Set<number>;
+  videos: Record<number, LessonMeta>;
+  className?: string;
+}) {
+  return (
+          <ul className={`space-y-1 ${className}`}>
+        {lessons.map((l) => {
+          const isActive = l.n === currentLesson;
+          const isProva = l.kind === "prova";
+          const isDone = completed.has(l.n);
+          const hasVideo = !!videos[l.n]?.url;
+          return (
+            <li key={l.n}>
+              <button
+                onClick={() => !l.locked && setCurrentLesson(l.n)}
+                disabled={l.locked}
+                className={`group relative flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition ${
+                  isActive
+                    ? "border-primary/40 bg-primary/10 shadow-[var(--shadow-glow)]"
+                    : "border-transparent hover:border-border hover:bg-background"
+                } ${l.locked ? "cursor-not-allowed opacity-60" : ""}`}
+              >
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+                )}
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
+                    isProva
+                      ? "bg-[#1D84F5]/20 text-[#68B0FF]"
+                      : isDone
+                        ? "bg-emerald-500/15 text-emerald-400"
+                        : isActive
+                          ? "gradient-gold text-primary-foreground"
+                          : "bg-background text-muted-foreground"
+                  }`}
+                >
+                  {isProva ? (
+                    <Award className="h-5 w-5" />
+                  ) : l.locked ? (
+                    <Lock className="h-4 w-4" />
+                  ) : isDone ? (
+                    <CheckCircle2 className="h-5 w-5" />
+                  ) : isActive ? (
+                    <Play className="h-4 w-4 fill-current" />
+                  ) : (
+                    l.n
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div
+                    className={`truncate text-sm font-semibold ${isActive ? "text-primary" : ""}`}
+                  >
+                    {videos[l.n]?.title ?? l.title}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                    {isProva ? (
+                      "Certificado de Conclusão"
+                    ) : (
+                      <>
+                        <Clock className="h-3 w-3" /> {fmtDuration(videos[l.n]?.duration) ?? l.duration}
+                        {hasVideo && <Youtube className="ml-1 h-3 w-3 text-red-500" />}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
   );
 }
 

@@ -117,7 +117,10 @@ function ModulePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Top bar */}
-      <header className="dark-scope sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/60 bg-background/85 px-5 backdrop-blur-xl md:px-8">
+      <header
+        className="dark-scope sticky top-0 z-30 flex items-center justify-between border-b border-border/60 bg-background/85 px-4 pb-3 backdrop-blur-xl md:px-8"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+      >
         <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Voltar
         </Link>
