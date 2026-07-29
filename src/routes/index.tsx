@@ -135,13 +135,6 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
         accent: "none",
         thumb: "/social-pratica.jpg",
       },
-      {
-        title: "Autoridade em Nicho",
-        author: "Julia Farias",
-        lessons: 8,
-        progress: 15,
-        accent: "green",
-      },
     ],
   },
   {

@@ -84,6 +84,8 @@ export function LurePlayer({
   const [isFs, setIsFs] = useState(false);
   /** Plano B: se a API não responder, mostramos o embed simples do YouTube. */
   const [fallback, setFallback] = useState(false);
+  /** Vira true no primeiro play: antes disso a capa esconde a marca do YouTube. */
+  const [started, setStarted] = useState(false);
   const [showUi, setShowUi] = useState(true);
   const hideTimer = useRef<number | undefined>(undefined);
 
@@ -96,6 +98,7 @@ export function LurePlayer({
     setEnded(false);
     setCurrent(0);
     setFallback(false);
+    setStarted(false);
 
     // Se em 8s o player não ficou pronto, o embed simples assume.
     const guard = window.setTimeout(() => {
@@ -127,6 +130,9 @@ export function LurePlayer({
           fs: 0,
           playsinline: 1,
           cc_load_policy: 0,
+          cc_lang_pref: "pt",
+          hl: "pt-BR",
+          vq: "hd1080",
           origin: window.location.origin,
         },
         events: {
@@ -139,12 +145,33 @@ export function LurePlayer({
             if (d) cbs.current.onDuration?.(d);
             setVolume(e.target.getVolume?.() ?? 100);
             setMuted(e.target.isMuted?.() ?? false);
+            // Remove de vez o modulo de legendas (inclusive as automaticas)
+            try {
+              e.target.unloadModule?.("captions");
+              e.target.unloadModule?.("cc");
+            } catch {
+              /* noop */
+            }
+            // Pede a melhor qualidade disponivel
+            try {
+              e.target.setPlaybackQuality?.("hd1080");
+            } catch {
+              /* noop */
+            }
           },
           onStateChange: (e: any) => {
             const S = (window as any).YT.PlayerState;
             if (e.data === S.PLAYING) {
               setPlaying(true);
+              setStarted(true);
               setEnded(false);
+              try {
+                e.target.unloadModule?.("captions");
+                e.target.unloadModule?.("cc");
+                e.target.setPlaybackQuality?.("hd1080");
+              } catch {
+                /* noop */
+              }
               const d = e.target.getDuration?.() || 0;
               setDuration(d);
               if (d) cbs.current.onDuration?.(d);
@@ -292,7 +319,7 @@ export function LurePlayer({
     return (
       <div className={`relative overflow-hidden bg-black ${className}`}>
         <iframe
-          src={`https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1`}
+          src={`https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&cc_load_policy=0&iv_load_policy=3&vq=hd1080`}
           title="Aula"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
@@ -321,27 +348,45 @@ export function LurePlayer({
         />
       </div>
 
-      {/* Máscara superior — esconde o lampejo de título do YouTube no início do vídeo */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-black/75 via-black/30 to-transparent" />
+      {/* Máscara superior — mata a barra de título do YouTube durante a reprodução */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-black via-black/70 to-transparent" />
+
+      {/* Capa: antes do primeiro play, cobre o player inteiro com a thumb do
+          proprio video — assim nada da interface do YouTube (titulo, canal,
+          "Ver no YouTube", botao vermelho) chega a aparecer. */}
+      {!started && (
+        <div className="absolute inset-0 z-20 overflow-hidden">
+          <img
+            src={`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+            }}
+          />
+          <div className="absolute inset-0 bg-black/35" />
+        </div>
+      )}
 
       {/* Escudo de clique: bloqueia hover/click do YT e faz play/pause */}
       <button
         type="button"
         onClick={togglePlay}
         aria-label={playing ? "Pausar" : "Reproduzir"}
-        className="absolute inset-0 z-10 h-full w-full cursor-pointer"
+        className="absolute inset-0 z-30 h-full w-full cursor-pointer"
       />
 
       {/* Carregando */}
       {!ready && (
-        <div className="absolute inset-0 z-30 grid place-items-center bg-gradient-to-b from-[#0B152D] to-black">
+        <div className="absolute inset-0 z-40 grid place-items-center bg-gradient-to-b from-[#0B152D] to-black">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
 
       {/* Play central quando pausado */}
       {ready && !playing && !ended && (
-        <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center">
+        <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center">
           <span className="grid h-20 w-20 place-items-center rounded-full bg-primary/95 shadow-[var(--shadow-glow)] transition group-hover:scale-105">
             <Play className="ml-1 h-8 w-8 fill-primary-foreground text-primary-foreground" />
           </span>
@@ -350,7 +395,7 @@ export function LurePlayer({
 
       {/* Fim do vídeo — cobre o "endscreen" do YouTube */}
       {ended && (
-        <div className="absolute inset-0 z-30 grid place-items-center bg-black/85 backdrop-blur-sm">
+        <div className="absolute inset-0 z-40 grid place-items-center bg-black/85 backdrop-blur-sm">
           <button
             type="button"
             onClick={togglePlay}
@@ -363,7 +408,7 @@ export function LurePlayer({
 
       {/* Barra de controles própria */}
       <div
-        className={`absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-2.5 pt-8 transition-opacity duration-300 md:px-4 ${
+        className={`absolute inset-x-0 bottom-0 z-40 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-2.5 pt-8 transition-opacity duration-300 md:px-4 ${
           showUi || !playing ? "opacity-100" : "opacity-0"
         }`}
       >
