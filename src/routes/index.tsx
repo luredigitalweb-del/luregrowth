@@ -691,15 +691,22 @@ function MobileHero() {
         playsInline
         preload="none"
         aria-hidden
-        className="absolute inset-y-0 -right-px h-full w-[calc(68%_+_2px)] object-cover object-center"
+        className="absolute inset-y-0 -right-px h-full w-full object-cover object-[68%_center]"
+        style={{
+          // Em vez de terminar num corte reto, o video se dissolve na esquerda
+          WebkitMaskImage:
+            "linear-gradient(100deg, transparent 0%, rgba(0,0,0,0.45) 14%, rgba(0,0,0,0.9) 30%, #000 44%)",
+          maskImage:
+            "linear-gradient(100deg, transparent 0%, rgba(0,0,0,0.45) 14%, rgba(0,0,0,0.9) 30%, #000 44%)",
+        }}
       />
 
-      {/* Escurecimento do lado do texto */}
+      {/* Escurecimento suave do lado do texto */}
       <div
         className="compat-scrim-x pointer-events-none absolute inset-0"
         style={{
           background:
-            "linear-gradient(100deg, rgba(5,9,20,0.94) 0%, rgba(5,9,20,0.72) 38%, rgba(5,9,20,0.28) 62%, rgba(5,9,20,0) 88%)",
+            "linear-gradient(100deg, rgba(5,9,20,0.92) 0%, rgba(5,9,20,0.55) 40%, rgba(5,9,20,0.12) 66%, rgba(5,9,20,0) 88%)",
         }}
         aria-hidden
       />
@@ -717,7 +724,7 @@ function MobileHero() {
         aria-hidden
       />
 
-      <div className="relative flex min-h-[280px] flex-col justify-center px-6 py-9">
+      <div className="relative flex min-h-[320px] flex-col justify-center px-6 py-9">
         <h1 className="font-display text-[30px] font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
           <span className="block text-[18px] font-normal text-white/90">{MOBILE_HERO.eyebrow}</span>
           {MOBILE_HERO.title}
