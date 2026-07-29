@@ -86,6 +86,9 @@ export function LurePlayer({
   const [fallback, setFallback] = useState(false);
   /** Vira true no primeiro play: antes disso a capa esconde a marca do YouTube. */
   const [started, setStarted] = useState(false);
+  /** A capa so sai do DOM depois de sumir por completo. */
+  const [coverGone, setCoverGone] = useState(false);
+  const [coverFading, setCoverFading] = useState(false);
   const [showUi, setShowUi] = useState(true);
   const hideTimer = useRef<number | undefined>(undefined);
 
@@ -99,6 +102,8 @@ export function LurePlayer({
     setCurrent(0);
     setFallback(false);
     setStarted(false);
+    setCoverGone(false);
+    setCoverFading(false);
 
     // Se em 8s o player não ficou pronto, o embed simples assume.
     const guard = window.setTimeout(() => {
@@ -202,6 +207,18 @@ export function LurePlayer({
       if (hostRef.current) hostRef.current.innerHTML = "";
     };
   }, [id]);
+
+  // A capa fica mais 1.2s depois do play (tempo dos avisos do YouTube) e
+  // some em seguida, ja com o video rodando por tras.
+  useEffect(() => {
+    if (!started) return;
+    const fade = window.setTimeout(() => setCoverFading(true), 1200);
+    const gone = window.setTimeout(() => setCoverGone(true), 2100);
+    return () => {
+      window.clearTimeout(fade);
+      window.clearTimeout(gone);
+    };
+  }, [started]);
 
   // Atualiza o tempo enquanto toca.
   useEffect(() => {
@@ -338,13 +355,13 @@ export function LurePlayer({
       onMouseMove={poke}
       onMouseLeave={() => playing && setShowUi(false)}
     >
-      {/* Host do YouTube (iframe injetado aqui). pointer-events off = nenhum clique/hover
-          chega no YT, então a barra de título e o botão "Assistir no YouTube" (que só
-          aparecem no hover) nunca surgem. O vídeo ocupa 100% — sem zoom. */}
+      {/* Host do YouTube (iframe injetado aqui). pointer-events off = nenhum clique
+          chega no YT. O quadro e ampliado ~16%: a barra de titulo do topo e o selo
+          do YouTube no rodape ficam fora da area visivel. */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
           ref={hostRef}
-          className="absolute left-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 [&>iframe]:h-full [&>iframe]:w-full"
+          className="absolute left-1/2 top-1/2 h-[116%] w-[116%] -translate-x-1/2 -translate-y-1/2 [&>iframe]:h-full [&>iframe]:w-full"
         />
       </div>
 
@@ -354,8 +371,12 @@ export function LurePlayer({
       {/* Capa: antes do primeiro play, cobre o player inteiro com a thumb do
           proprio video — assim nada da interface do YouTube (titulo, canal,
           "Ver no YouTube", botao vermelho) chega a aparecer. */}
-      {!started && (
-        <div className="absolute inset-0 z-20 overflow-hidden">
+      {!coverGone && (
+        <div
+          className={`pointer-events-none absolute inset-0 z-20 overflow-hidden transition-opacity duration-700 ${
+            coverFading ? "opacity-0" : "opacity-100"
+          }`}
+        >
           <img
             src={`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`}
             alt=""
