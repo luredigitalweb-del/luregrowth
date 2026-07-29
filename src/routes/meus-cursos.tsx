@@ -8,9 +8,12 @@ import {
   MobileTabBar,
   MobileModuleCard,
   sections,
+  moduleSlug,
+  useLoadCourseProgress,
   type Module,
 } from "./index";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
 
 const coverKey = (sectionId: string, title: string) => `${sectionId}|${title.trim()}`;
@@ -33,18 +36,11 @@ export const Route = createFileRoute("/meus-cursos")({
 type EnrichedModule = Module & { sectionId: string; sectionTitle: string };
 type TabKey = "andamento" | "concluidos" | "certificados";
 
-// Overrides de demo: garante alguns concluídos + destaques em andamento
-const DEMO_OVERRIDES: Record<string, number> = {
-  "Prospecção no LinkedIn": 100,
-  "Roteiros que retêm atenção": 100,
-  "Call Amanda": 100,
-  "Fundamentos de IA Generativa": 85,
-  "Meta Ads Avançado": 78,
-  "Playbook de Objeções": 62,
-};
-
 function MeusCursosPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { session } = useAuth();
+  // Progresso real do aluno (aulas concluidas no banco), nunca dado de demo.
+  const courseProgress = useLoadCourseProgress(session?.user?.id);
   const { tab } = Route.useSearch();
   const navigate = Route.useNavigate();
   const setTab = (t: TabKey) => navigate({ search: { tab: t } });
@@ -75,12 +71,12 @@ function MeusCursosPage() {
       sections.flatMap((s) =>
         s.modules.map((m) => ({
           ...m,
-          progress: DEMO_OVERRIDES[m.title] ?? m.progress,
+          progress: courseProgress[moduleSlug(m.title)] ?? 0,
           sectionId: s.id,
           sectionTitle: s.title,
         })),
       ),
-    [],
+    [courseProgress],
   );
 
   const inProgress = all.filter((m) => m.progress > 0 && m.progress < 100);

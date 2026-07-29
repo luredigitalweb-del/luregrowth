@@ -398,9 +398,68 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
 const CoversContext = createContext<Record<string, string>>({});
 const coverKey = (sectionId: string, title: string) => `${sectionId}|${title.trim()}`;
 
+/** Titulo do modulo -> slug usado na URL do curso e no banco. */
+export const moduleSlug = (title: string) =>
+  title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+/**
+ * Progresso real do aluno: % por curso, calculado sobre as aulas concluidas
+ * salvas em lesson_progress. Sem dados = 0%.
+ */
+const ProgressContext = createContext<Record<string, number>>({});
+
+export function useCourseProgress() {
+  return useContext(ProgressContext);
+}
+
+/** Total de aulas de cada curso, pelo catalogo. */
+const LESSON_TOTALS: Record<string, number> = Object.fromEntries(
+  sections.flatMap((s) => s.modules.map((m) => [moduleSlug(m.title), m.lessons])),
+);
+
+export function useLoadCourseProgress(userId?: string) {
+  const [map, setMap] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!userId) {
+      setMap({});
+      return;
+    }
+    let alive = true;
+    supabase
+      .from("lesson_progress")
+      .select("course_slug, lesson_n, completed")
+      .eq("user_id", userId)
+      .eq("completed", true)
+      .then(({ data }) => {
+        if (!alive || !data) return;
+        const done: Record<string, Set<number>> = {};
+        for (const r of data as { course_slug: string; lesson_n: number }[]) {
+          (done[r.course_slug] ??= new Set()).add(r.lesson_n);
+        }
+        const pct: Record<string, number> = {};
+        for (const [slug, set] of Object.entries(done)) {
+          const total = LESSON_TOTALS[slug];
+          if (total) pct[slug] = Math.min(100, Math.round((set.size / total) * 100));
+        }
+        setMap(pct);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [userId]);
+  return map;
+}
+
 function Portal() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [covers, setCovers] = useState<Record<string, string>>({});
+  const { session } = useAuth();
+  const courseProgress = useLoadCourseProgress(session?.user?.id);
 
   useEffect(() => {
     let alive = true;
@@ -423,6 +482,7 @@ function Portal() {
 
   return (
     <CoversContext.Provider value={covers}>
+    <ProgressContext.Provider value={courseProgress}>
     <div className="min-h-screen bg-background text-foreground">
       <div className="flex">
         <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} />
@@ -454,6 +514,7 @@ function Portal() {
         </div>
       </div>
     </div>
+    </ProgressContext.Provider>
     </CoversContext.Provider>
   );
 }
@@ -1089,10 +1150,14 @@ function ProfileMenu({ open }: { open: boolean }) {
 }
 
 function ProgressPill() {
-  // Progresso geral: soma ponderada pelas aulas de cada módulo.
+  // Progresso geral real: aulas concluidas / total de aulas do catalogo.
+  const byCourse = useCourseProgress();
   const mods = sections.flatMap((s) => s.modules);
   const total = mods.reduce((a, m) => a + m.lessons, 0);
-  const done = mods.reduce((a, m) => a + Math.round((m.lessons * m.progress) / 100), 0);
+  const done = mods.reduce(
+    (a, m) => a + Math.round((m.lessons * (byCourse[moduleSlug(m.title)] ?? 0)) / 100),
+    0,
+  );
   const pct = total ? Math.round((done / total) * 100) : 0;
 
   const r = 15.5;
@@ -1310,13 +1375,8 @@ export function MobileModuleCard({
 }) {
   const covers = useContext(CoversContext);
   const thumb = covers[coverKey(sectionId, m.title)] ?? m.thumb;
-
-  const slug = m.title
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+  const slug = moduleSlug(m.title);
+  const progress = useCourseProgress()[slug] ?? 0;
 
   const linkProps = m.moduleId
     ? ({ to: "/modulo/$id", params: { id: m.moduleId } } as const)
@@ -1360,12 +1420,12 @@ export function MobileModuleCard({
         )}
         <div className="mt-auto flex items-center gap-2.5 pt-2">
           <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
-            {m.progress}%
+            {progress}%
           </span>
           <span className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
             <span
               className="block h-full rounded-full gradient-blue transition-all duration-700"
-              style={{ width: `${m.progress}%` }}
+              style={{ width: `${progress}%` }}
             />
           </span>
         </div>
@@ -1383,12 +1443,8 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
   const covers = useContext(CoversContext);
   const thumb = covers[coverKey(sectionId, m.title)] ?? m.thumb;
 
-  const slug = m.title
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+  const slug = moduleSlug(m.title);
+  const progress = useCourseProgress()[slug] ?? 0;
 
   // Todos os cards são clicáveis (removido o estado "em gravação").
   const emGravacao = false;
@@ -1466,7 +1522,7 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
 
       {/* Progress bar flush to card bottom */}
       <div className="relative h-1.5 w-full bg-background/70">
-        <div className={`h-full ${accentBar}`} style={{ width: `${m.progress}%` }} />
+        <div className={`h-full ${accentBar}`} style={{ width: `${progress}%` }} />
       </div>
 
       {/* "Em gravação" overlay — aparece ao passar o mouse */}

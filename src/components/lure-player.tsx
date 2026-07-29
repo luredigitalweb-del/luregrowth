@@ -49,6 +49,7 @@ function fmt(sec: number): string {
  */
 export function LurePlayer({
   videoUrl,
+  startAt,
   className = "",
   onEnded,
   onDuration,
@@ -56,6 +57,8 @@ export function LurePlayer({
   onTime,
 }: {
   videoUrl: string;
+  /** Retoma a partir deste segundo (onde o aluno parou). */
+  startAt?: number;
   className?: string;
   onEnded?: () => void;
   /** Duração do vídeo em segundos, assim que o YouTube informa. */
@@ -71,6 +74,8 @@ export function LurePlayer({
   const playerRef = useRef<any>(null);
   /** Enquanto true, estamos so enchendo o buffer em mudo — nao e o play do usuario. */
   const warmingRef = useRef(false);
+  const startAtRef = useRef(startAt);
+  startAtRef.current = startAt;
   const endedCb = useRef(onEnded);
   endedCb.current = onEnded;
   const cbs = useRef({ onDuration, onPlayingChange, onTime });
@@ -181,8 +186,10 @@ export function LurePlayer({
               warmingRef.current = false;
               try {
                 e.target.pauseVideo?.();
-                e.target.seekTo?.(0, true);
+                const resume = startAtRef.current;
+                e.target.seekTo?.(resume && resume > 5 ? resume : 0, true);
                 e.target.unMute?.();
+                if (resume && resume > 5) setCurrent(resume);
               } catch {
                 /* noop */
               }

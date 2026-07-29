@@ -79,7 +79,7 @@ type Lesson = {
 };
 
 const lessons: Lesson[] = [
-  { n: 1, title: "O Poder do Social Selling", duration: "25:14", done: true },
+  { n: 1, title: "O Poder do Social Selling", duration: "25:14" },
   { n: 2, title: "Otimização de Perfil B2B", duration: "18:42" },
   { n: 3, title: "Conteúdo de Conversão", duration: "32:10" },
   { n: 4, title: "Scripts de Abordagem", duration: "21:05" },
@@ -106,9 +106,9 @@ function CoursePage() {
   const courseTitle = deslug(slug);
   const { session, profile, isAdmin } = useAuth();
   const [currentLesson, setCurrentLesson] = useState(1);
-  const [completed, setCompleted] = useState<Set<number>>(
-    () => new Set(lessons.filter((l) => l.done).map((l) => l.n)),
-  );
+  const [completed, setCompleted] = useState<Set<number>>(new Set());
+  /** Onde o aluno parou em cada aula (segundos), vindo do banco. */
+  const [resumeAt, setResumeAt] = useState<Record<number, number>>({});
   const active = lessons.find((l) => l.n === currentLesson)!;
   const doneCount = completed.size;
   const progress = Math.round((doneCount / lessons.length) * 100);
@@ -116,13 +116,28 @@ function CoursePage() {
   const nextLesson = lessons.find((l) => l.n > active.n && !l.locked);
   const isLast = !nextLesson;
 
-  const toggleComplete = (n: number) =>
+  const toggleComplete = (n: number) => {
+    const willComplete = !completed.has(n);
     setCompleted((prev) => {
       const next = new Set(prev);
-      if (next.has(n)) next.delete(n);
-      else next.add(n);
+      if (willComplete) next.add(n);
+      else next.delete(n);
       return next;
     });
+    // Grava na hora — nao espera o proximo flush do cronometro
+    const uid = session?.user?.id;
+    if (!uid) return;
+    void supabase.from("lesson_progress").upsert(
+      {
+        user_id: uid,
+        course_slug: slug,
+        lesson_n: n,
+        completed: willComplete,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,course_slug,lesson_n" },
+    );
+  };
 
   const goNext = () => {
     if (nextLesson) setCurrentLesson(nextLesson.n);
@@ -219,7 +234,41 @@ function CoursePage() {
     );
   }, [userId, slug, currentLesson, completed]);
 
-  // Ao trocar de aula: zera o acumulador e carrega o progresso salvo.
+  // Progresso real do aluno neste curso: quais aulas concluiu e onde parou.
+  useEffect(() => {
+    if (!userId) {
+      setCompleted(new Set());
+      setResumeAt({});
+      return;
+    }
+    let alive = true;
+    supabase
+      .from("lesson_progress")
+      .select("lesson_n, watched_seconds, last_position, completed")
+      .eq("user_id", userId)
+      .eq("course_slug", slug)
+      .then(({ data }) => {
+        if (!alive || !data) return;
+        const done = new Set<number>();
+        const pos: Record<number, number> = {};
+        for (const r of data as {
+          lesson_n: number;
+          watched_seconds: number | null;
+          last_position: number | null;
+          completed: boolean | null;
+        }[]) {
+          if (r.completed) done.add(r.lesson_n);
+          if (r.last_position && r.last_position > 5) pos[r.lesson_n] = r.last_position;
+        }
+        setCompleted(done);
+        setResumeAt(pos);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [userId, slug]);
+
+  // Ao trocar de aula: zera o acumulador e recupera o acumulado daquela aula.
   useEffect(() => {
     watch.current = { playing: false, watched: 0, pos: 0, lastT: 0, dirty: false };
     if (!userId) return;
@@ -238,10 +287,28 @@ function CoursePage() {
       });
   }, [userId, slug, currentLesson]);
 
-  const onVideoPlayingChange = useCallback((playing: boolean) => {
-    watch.current.playing = playing;
-    if (!playing) watch.current.dirty = true;
-  }, []);
+  // Salva tambem ao fechar a aba / trocar de app (mobile nem sempre desmonta).
+  useEffect(() => {
+    const save = () => flushProgress();
+    window.addEventListener("pagehide", save);
+    document.addEventListener("visibilitychange", save);
+    return () => {
+      window.removeEventListener("pagehide", save);
+      document.removeEventListener("visibilitychange", save);
+    };
+  }, [flushProgress]);
+
+  const onVideoPlayingChange = useCallback(
+    (playing: boolean) => {
+      watch.current.playing = playing;
+      // Pausou: grava na hora onde parou, sem esperar o intervalo.
+      if (!playing) {
+        watch.current.dirty = true;
+        void flushProgress();
+      }
+    },
+    [flushProgress],
+  );
 
   const onVideoTime = useCallback((t: number) => {
     const w = watch.current;
@@ -320,6 +387,7 @@ function CoursePage() {
           <VideoPlayer
             url={currentUrl}
             lessonN={active.n}
+            startAt={resumeAt[active.n]}
             duration={displayDuration}
             isAdmin={isAdmin}
             onSave={saveVideo}
@@ -609,6 +677,7 @@ function LessonList({
 function VideoPlayer({
   url,
   lessonN,
+  startAt,
   duration,
   isAdmin,
   onSave,
@@ -618,6 +687,8 @@ function VideoPlayer({
 }: {
   url?: string;
   lessonN: number;
+  /** Segundo em que o aluno parou nessa aula. */
+  startAt?: number;
   duration: string;
   isAdmin: boolean;
   onSave: (url: string) => Promise<void>;
@@ -656,6 +727,7 @@ function VideoPlayer({
         {embed && !editing ? (
           <LurePlayer
             videoUrl={url!}
+            startAt={startAt}
             className="absolute inset-0 h-full w-full"
             onDuration={onDuration}
             onPlayingChange={onPlayingChange}
