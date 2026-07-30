@@ -1,9 +1,17 @@
 /**
- * Service worker do LURE Growth.
+ * Service worker do LURE Growth: notificações push e cache de imagem.
  *
- * Só cuida das notificações push — não guarda cache de página nenhuma, pra não
- * arriscar servir versão velha do app depois de um deploy.
+ * Regra de ouro daqui: um listener de `fetch` faz TODA requisição do site
+ * passar pela thread do service worker antes de ir pra rede — e, se ele
+ * estiver dormindo, o navegador ainda precisa acordá-lo primeiro. Por isso só
+ * imagem entra aqui. HTML, JavaScript e chamada de API saem na primeira linha
+ * e seguem direto, como se o service worker não existisse.
  */
+
+const VERSAO = "v1";
+const CACHE_IMAGENS = `lure-imagens-${VERSAO}`;
+/** Teto conservador: resposta de outro domínio ocupa bem mais espaço que o tamanho real. */
+const MAX_IMAGENS = 80;
 
 const ICON = "/pwa-icon-192.png";
 const BADGE = "/notification-badge-96.png";
@@ -14,12 +22,89 @@ self.addEventListener("install", () => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      const nomes = await caches.keys();
+      await Promise.all(
+        nomes
+          .filter((n) => n.startsWith("lure-") && n !== CACHE_IMAGENS)
+          .map((n) => caches.delete(n)),
+      );
+      await self.clients.claim();
+    })(),
+  );
 });
 
-// Um listener de fetch (mesmo sem responder nada) mantém o app instalável nos
-// navegadores mais antigos, que exigiam service worker com fetch.
-self.addEventListener("fetch", () => {});
+/* ------------------------------------------------------------------ */
+/* Cache de imagem                                                      */
+/* ------------------------------------------------------------------ */
+
+/** Descarta as mais antigas quando passa do teto. */
+async function aparar(cache) {
+  const chaves = await cache.keys();
+  const sobrando = chaves.length - MAX_IMAGENS;
+  if (sobrando <= 0) return;
+  for (const chave of chaves.slice(0, sobrando)) await cache.delete(chave);
+}
+
+function ehImagem(request, url) {
+  if (request.destination === "image") return true;
+  return /\.(png|jpe?g|webp|avif|gif|svg|ico)$/i.test(url.pathname);
+}
+
+/** Dados nunca entram no cache: precisam estar sempre frescos. */
+function ehApi(url) {
+  return /\/(rest|auth|realtime|functions)\/v1\//.test(url.pathname);
+}
+
+async function servirImagem(event, request) {
+  const cache = await caches.open(CACHE_IMAGENS);
+  const guardada = await cache.match(request);
+
+  const rede = fetch(request)
+    .then(async (resposta) => {
+      // `opaque` é a resposta de outro domínio (as fotos do Supabase). Não dá
+      // pra ler o conteúdo, mas dá pra guardar e devolver igual.
+      if (resposta && (resposta.ok || resposta.type === "opaque")) {
+        try {
+          await cache.put(request, resposta.clone());
+          await aparar(cache);
+        } catch {
+          // Sem espaço no aparelho: serve a imagem mesmo assim.
+        }
+      }
+      return resposta;
+    })
+    .catch(() => null);
+
+  // Se já tem no cache, devolve na hora e atualiza por baixo — assim uma
+  // imagem trocada no servidor aparece na próxima visita sem travar esta.
+  if (guardada) {
+    event.waitUntil(rede);
+    return guardada;
+  }
+  return (await rede) ?? Response.error();
+}
+
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.method !== "GET" || request.mode === "navigate") return;
+
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return;
+  }
+  if (!url.protocol.startsWith("http")) return;
+  if (ehApi(url) || !ehImagem(request, url)) return;
+
+  event.respondWith(servirImagem(event, request));
+});
+
+/* ------------------------------------------------------------------ */
+/* Notificações                                                         */
+/* ------------------------------------------------------------------ */
 
 self.addEventListener("push", (event) => {
   let payload = {};
@@ -46,7 +131,10 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = new URL((event.notification.data && event.notification.data.url) || "/", self.location.origin);
+  const target = new URL(
+    (event.notification.data && event.notification.data.url) || "/",
+    self.location.origin,
+  );
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {

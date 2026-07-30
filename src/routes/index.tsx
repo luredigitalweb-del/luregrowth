@@ -482,39 +482,39 @@ function Portal() {
 
   return (
     <CoversContext.Provider value={covers}>
-    <ProgressContext.Provider value={courseProgress}>
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="flex">
-        <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} />
-        <div className="flex-1 min-w-0">
-          {/* Mobile-only top bar */}
-          <MobileTopBar />
-          {/* Desktop top bar */}
-          <div className="hidden lg:block">
-            <TopBar />
+      <ProgressContext.Provider value={courseProgress}>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="flex">
+            <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} />
+            <div className="flex-1 min-w-0">
+              {/* Mobile-only top bar */}
+              <MobileTopBar />
+              {/* Desktop top bar */}
+              <div className="hidden lg:block">
+                <TopBar />
+              </div>
+              <main className="pb-32 lg:pb-24">
+                {/* Mobile-only G4-style hero */}
+                <div className="lg:hidden">
+                  <MobileHero />
+                </div>
+                {/* Desktop hero */}
+                <div className="hidden lg:block">
+                  <HeroBanner />
+                </div>
+                <div className="mx-auto max-w-[1400px] px-4 md:px-10">
+                  {/* Catálogo único da home (com as fotos das calls de vendas) */}
+                  {sections.map((s) => (
+                    <SectionRow key={s.id} section={s} />
+                  ))}
+                </div>
+              </main>
+              {/* Mobile bottom tab bar */}
+              <MobileTabBar />
+            </div>
           </div>
-          <main className="pb-32 lg:pb-24">
-            {/* Mobile-only G4-style hero */}
-            <div className="lg:hidden">
-              <MobileHero />
-            </div>
-            {/* Desktop hero */}
-            <div className="hidden lg:block">
-              <HeroBanner />
-            </div>
-            <div className="mx-auto max-w-[1400px] px-4 md:px-10">
-              {/* Catálogo único da home (com as fotos das calls de vendas) */}
-              {sections.map((s) => (
-                <SectionRow key={s.id} section={s} />
-              ))}
-            </div>
-          </main>
-          {/* Mobile bottom tab bar */}
-          <MobileTabBar />
         </div>
-      </div>
-    </div>
-    </ProgressContext.Provider>
+      </ProgressContext.Provider>
     </CoversContext.Provider>
   );
 }
@@ -709,7 +709,10 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
           )}
         </div>
 
-        <div className="mt-auto px-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}>
+        <div
+          className="mt-auto px-3"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
+        >
           <button
             onClick={handleSignOut}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-red-400 transition active:bg-red-500/10"
@@ -737,11 +740,26 @@ const MOBILE_HERO = {
 } as const;
 
 function MobileHero() {
+  // O video decorativo tem 5,4 MB e o `autoPlay` manda baixar na hora, mesmo
+  // com preload="none" — ele engasgava as capas dos cursos no 4G. Entra so
+  // depois que a pagina terminou de carregar; o poster segura a aparencia ate
+  // la, entao visualmente nada muda.
+  const [videoLiberado, setVideoLiberado] = useState(false);
+  useEffect(() => {
+    if (document.readyState === "complete") {
+      const t = window.setTimeout(() => setVideoLiberado(true), 200);
+      return () => window.clearTimeout(t);
+    }
+    const liberar = () => setVideoLiberado(true);
+    window.addEventListener("load", liberar, { once: true });
+    return () => window.removeEventListener("load", liberar);
+  }, []);
+
   return (
     <section className="relative overflow-hidden">
       {/* Video na metade direita */}
       <video
-        src={MOBILE_HERO.video}
+        src={videoLiberado ? MOBILE_HERO.video : undefined}
         poster={MOBILE_HERO.poster}
         autoPlay
         muted
@@ -1275,9 +1293,13 @@ function HeroBanner() {
       {/* Banner estilo Kiwify: imagem completa (texto ja embutido na arte), exibida inteira
           na proporcao nativa — w-full/h-auto, entao nunca corta e escala em todo device. */}
       <div className="relative w-full">
+        {/* Primeira coisa que aparece na tela: pede prioridade em vez de
+            disputar a fila com as capas que estao abaixo da dobra. */}
         <img
           src="/banner-home.jpg"
           alt="LURE Growth"
+          fetchPriority="high"
+          decoding="async"
           className="block w-full h-auto"
         />
       </div>
@@ -1400,7 +1422,12 @@ export function MobileModuleCard({
           />
         ) : (
           <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-[#0B152D] to-black">
-            <img src={lureLogo.url} alt="" aria-hidden className="h-12 w-12 object-contain opacity-90" />
+            <img
+              src={lureLogo.url}
+              alt=""
+              aria-hidden
+              className="h-12 w-12 object-contain opacity-90"
+            />
           </div>
         )}
         <div className="compat-scrim-y absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />

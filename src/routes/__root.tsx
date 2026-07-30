@@ -109,8 +109,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      // Só o de 32px: o de 192 pesava 54 KB e disputava banda no primeiro
+      // carregamento sem precisar — quem cuida do ícone grande é o manifest.
       { rel: "icon", href: "/favicon-32.png", type: "image/png", sizes: "32x32" },
-      { rel: "icon", href: "/favicon-192.png", type: "image/png", sizes: "192x192" },
       { rel: "shortcut icon", href: "/favicon-32.png", type: "image/png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },

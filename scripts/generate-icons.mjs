@@ -11,7 +11,7 @@
  *   pwa-icon-maskable-512.png            → purpose "maskable" (sangra até a borda;
  *                                           o Android é quem recorta o formato)
  *   apple-touch-icon.png                 → 180px sem transparência (o iOS arredonda)
- *   favicon-32.png / favicon-192.png     → aba do navegador
+ *   favicon-32.png / favicon.ico         → aba do navegador
  *   notification-badge-96.png            → silhueta branca da barra de status do Android
  */
 import sharp from "sharp";
@@ -29,7 +29,10 @@ async function trimmed() {
   const { data, info } = await img.raw().toBuffer({ resolveWithObject: true });
   const alphaAt = (x, y) => data[(y * info.width + x) * 4 + 3];
 
-  let minX = info.width, minY = info.height, maxX = 0, maxY = 0;
+  let minX = info.width,
+    minY = info.height,
+    maxX = 0,
+    maxY = 0;
   for (let y = 0; y < info.height; y++) {
     for (let x = 0; x < info.width; x++) {
       if (alphaAt(x, y) > 8) {
@@ -160,15 +163,29 @@ async function ico(square, sizes) {
 const square = await trimmed();
 await mkdir(OUT, { recursive: true });
 
-const write = (name, buf) => sharp(buf).toFile(join(OUT, name)).then(() => console.log("✓", name));
+const write = (name, buf) =>
+  sharp(buf)
+    .toFile(join(OUT, name))
+    .then(() => console.log("✓", name));
 const writeRaw = (name, buf) => writeFile(join(OUT, name), buf).then(() => console.log("✓", name));
 
 await Promise.all([
   // "any": mantém os cantos arredondados da própria arte.
-  sharp(square).resize(512, 512).png({ compressionLevel: 9 }).toBuffer().then((b) => write("pwa-icon-512.png", b)),
-  sharp(square).resize(192, 192).png({ compressionLevel: 9 }).toBuffer().then((b) => write("pwa-icon-192.png", b)),
-  sharp(square).resize(192, 192).png({ compressionLevel: 9 }).toBuffer().then((b) => write("favicon-192.png", b)),
-  sharp(square).resize(32, 32).png({ compressionLevel: 9 }).toBuffer().then((b) => write("favicon-32.png", b)),
+  sharp(square)
+    .resize(512, 512)
+    .png({ compressionLevel: 9 })
+    .toBuffer()
+    .then((b) => write("pwa-icon-512.png", b)),
+  sharp(square)
+    .resize(192, 192)
+    .png({ compressionLevel: 9 })
+    .toBuffer()
+    .then((b) => write("pwa-icon-192.png", b)),
+  sharp(square)
+    .resize(32, 32)
+    .png({ compressionLevel: 9 })
+    .toBuffer()
+    .then((b) => write("favicon-32.png", b)),
   // "maskable" e iOS: sangram até a borda, sem transparência.
   fullBleed(square, 512).then((b) => write("pwa-icon-maskable-512.png", b)),
   // O iOS recorta bem menos que o Android, então a arte pode respirar um pouco mais.
