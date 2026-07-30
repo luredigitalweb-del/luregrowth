@@ -15,7 +15,7 @@
  *   notification-badge-96.png            → silhueta branca da barra de status do Android
  */
 import sharp from "sharp";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -124,10 +124,44 @@ async function badge(square, size) {
     .toBuffer();
 }
 
+/**
+ * Empacota PNGs num .ico. Um `.ico` é só um índice + as imagens coladas em
+ * seguida, e navegador aceita PNG lá dentro. Precisa existir porque tem gente
+ * (e robô) que busca /favicon.ico direto, ignorando as tags do <head>.
+ */
+async function ico(square, sizes) {
+  const imagens = await Promise.all(
+    sizes.map((s) => sharp(square).resize(s, s).png({ compressionLevel: 9 }).toBuffer()),
+  );
+
+  const cabecalho = Buffer.alloc(6);
+  cabecalho.writeUInt16LE(0, 0); // reservado
+  cabecalho.writeUInt16LE(1, 2); // 1 = ícone
+  cabecalho.writeUInt16LE(sizes.length, 4);
+
+  let offset = 6 + sizes.length * 16;
+  const indice = sizes.map((s, i) => {
+    const entrada = Buffer.alloc(16);
+    entrada.writeUInt8(s >= 256 ? 0 : s, 0); // 0 quer dizer 256
+    entrada.writeUInt8(s >= 256 ? 0 : s, 1);
+    entrada.writeUInt8(0, 2); // paleta
+    entrada.writeUInt8(0, 3); // reservado
+    entrada.writeUInt16LE(1, 4); // planos
+    entrada.writeUInt16LE(32, 6); // bits por pixel
+    entrada.writeUInt32LE(imagens[i].length, 8);
+    entrada.writeUInt32LE(offset, 12);
+    offset += imagens[i].length;
+    return entrada;
+  });
+
+  return Buffer.concat([cabecalho, ...indice, ...imagens]);
+}
+
 const square = await trimmed();
 await mkdir(OUT, { recursive: true });
 
 const write = (name, buf) => sharp(buf).toFile(join(OUT, name)).then(() => console.log("✓", name));
+const writeRaw = (name, buf) => writeFile(join(OUT, name), buf).then(() => console.log("✓", name));
 
 await Promise.all([
   // "any": mantém os cantos arredondados da própria arte.
@@ -140,6 +174,7 @@ await Promise.all([
   // O iOS recorta bem menos que o Android, então a arte pode respirar um pouco mais.
   fullBleed(square, 180, 0.97).then((b) => write("apple-touch-icon.png", b)),
   badge(square, 96).then((b) => write("notification-badge-96.png", b)),
+  ico(square, [16, 32, 48]).then((b) => writeRaw("favicon.ico", b)),
 ]);
 
 console.log("Ícones gerados em public/");
