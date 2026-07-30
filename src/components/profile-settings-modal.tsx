@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { Avatar, uploadAvatar, validateAvatarFile } from "./avatar";
+import { NotificationSettings } from "./notifications";
 
 /* ---------------- Store global (abrir de qualquer lugar) ---------------- */
 
@@ -138,7 +139,8 @@ export function ProfileSettingsModal() {
       />
 
       {/* Card */}
-      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-t-3xl border border-border bg-card shadow-[0_40px_120px_-30px_rgba(0,0,0,0.85)] sm:rounded-3xl">
+      {/* max-h + rolagem: o bloco de notificações deixou o card mais alto que a tela do celular */}
+      <div className="relative z-10 max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-border bg-card shadow-[0_40px_120px_-30px_rgba(0,0,0,0.85)] sm:max-h-[88vh] sm:rounded-3xl">
         {/* Faixa superior com brilho */}
         <div className="relative h-24 overflow-hidden bg-gradient-to-br from-primary/25 via-surface-elevated to-background">
           <div
@@ -243,6 +245,8 @@ export function ProfileSettingsModal() {
               </div>
             </div>
           </div>
+
+          <NotificationSettings />
 
           {msg && (
             <div

@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/auth";
 import { AuthGate } from "../components/auth-gate";
 import { ProfileSettingsModal } from "../components/profile-settings-modal";
+import { NotificationPrompt } from "../components/notifications";
 
 function NotFoundComponent() {
   return (
@@ -81,9 +82,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Lure Digital — Portal de Membros" },
-      { name: "description", content: "Plataforma de cursos e conteúdos exclusivos Lure Digital. Marketing, IA e performance para times de alto impacto." },
+      {
+        name: "description",
+        content:
+          "Plataforma de cursos e conteúdos exclusivos Lure Digital. Marketing, IA e performance para times de alto impacto.",
+      },
       { property: "og:title", content: "Lure Digital — Portal de Membros" },
-      { property: "og:description", content: "Cursos, mentorias e trilhas de IA aplicada ao marketing digital." },
+      {
+        property: "og:description",
+        content: "Cursos, mentorias e trilhas de IA aplicada ao marketing digital.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#050914" },
@@ -94,13 +102,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/assets/lure-logo.png", type: "image/png" },
-      { rel: "shortcut icon", href: "/assets/lure-logo.png", type: "image/png" },
+      { rel: "icon", href: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { rel: "icon", href: "/favicon-192.png", type: "image/png", sizes: "192x192" },
+      { rel: "shortcut icon", href: "/favicon-32.png", type: "image/png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/assets/lure-logo.png" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -133,6 +145,7 @@ function RootComponent() {
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
           <ProfileSettingsModal />
+          <NotificationPrompt />
         </AuthGate>
       </AuthProvider>
     </QueryClientProvider>
