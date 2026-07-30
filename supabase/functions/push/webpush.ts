@@ -148,7 +148,12 @@ export async function sendPush(
     const res = await fetch(sub.endpoint, {
       method: "POST",
       headers: {
-        Authorization: await vapidAuth(sub.endpoint, vapid.publicKey, vapid.privateKey, vapid.subject),
+        Authorization: await vapidAuth(
+          sub.endpoint,
+          vapid.publicKey,
+          vapid.privateKey,
+          vapid.subject,
+        ),
         "Content-Encoding": "aes128gcm",
         "Content-Type": "application/octet-stream",
         TTL: "86400",

@@ -22,7 +22,8 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: 
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-lure-secret",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-lure-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -40,7 +41,8 @@ async function loadConfig() {
     .select("vapid_public, vapid_private, subject, cron_secret")
     .eq("id", 1)
     .single();
-  if (error || !data) throw new Error("push_config não configurado: " + (error?.message ?? "vazio"));
+  if (error || !data)
+    throw new Error("push_config não configurado: " + (error?.message ?? "vazio"));
   return {
     vapid: {
       publicKey: data.vapid_public,
