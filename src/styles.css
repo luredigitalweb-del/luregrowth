@@ -142,6 +142,20 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+
+    /* Comportamento de aplicativo, não de site: sem pinça pra dar zoom, sem
+       zoom no toque duplo e sem o texto crescer sozinho quando o celular
+       vira de lado. O `manipulation` mantém o rolar e o toque normais. */
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Nada de arrastar a página pro lado nem do "elástico" no fim da rolagem. */
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+  }
+  /* Campo com fonte menor que 16px faz o iPhone dar zoom sozinho ao focar. */
+  input, select, textarea {
+    font-size: max(16px, 1em);
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);

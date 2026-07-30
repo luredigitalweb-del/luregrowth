@@ -80,7 +80,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      {
+        name: "viewport",
+        // maximum-scale + user-scalable travam a pinça, pra parecer aplicativo
+        // e não página. O iPhone ignora isso no Safari comum — lá quem segura
+        // é o bloqueio de gesto em <RootComponent>.
+        content:
+          "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+      },
       { title: "Lure Digital — Portal de Membros" },
       {
         name: "description",
@@ -135,8 +142,28 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * O Safari do iPhone ignora `user-scalable=no` desde o iOS 10, então a pinça
+ * ainda dá zoom mesmo com a meta tag certa. Bloquear os eventos de gesto
+ * (que só existem no Safari) é o que resolve de fato.
+ */
+function useBlockPinchZoom() {
+  useEffect(() => {
+    const bloquear = (e: Event) => e.preventDefault();
+    for (const evento of ["gesturestart", "gesturechange", "gestureend"]) {
+      document.addEventListener(evento, bloquear, { passive: false });
+    }
+    return () => {
+      for (const evento of ["gesturestart", "gesturechange", "gestureend"]) {
+        document.removeEventListener(evento, bloquear);
+      }
+    };
+  }, []);
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useBlockPinchZoom();
 
   return (
     <QueryClientProvider client={queryClient}>

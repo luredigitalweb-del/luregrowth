@@ -22,17 +22,29 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-async function fetchProfile(userId: string): Promise<Profile | null> {
+/**
+ * Busca o perfil e, de quebra, serve de prova de que o token ainda vale — é
+ * uma chamada de verdade ao servidor, passando pelo RLS.
+ *
+ * `confiavel` diz se dá pra liberar o app. Falha de rede não derruba ninguém
+ * (o app é instalável e pode abrir sem sinal); o que derruba é o servidor
+ * responder que aquele token não serve mais.
+ */
+async function fetchProfile(
+  userId: string,
+): Promise<{ profile: Profile | null; confiavel: boolean }> {
   const { data, error } = await supabase
     .from("profiles")
     .select("id, email, full_name, avatar_url, role, active, created_at")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
+
   if (error) {
     console.error("[auth] erro ao buscar perfil:", error.message);
-    return null;
+    const semRede = typeof navigator !== "undefined" && navigator.onLine === false;
+    return { profile: null, confiavel: semRede };
   }
-  return data as Profile;
+  return { profile: (data as Profile) ?? null, confiavel: !!data };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -40,37 +52,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadProfileFor = useCallback(async (s: Session | null) => {
-    if (!s?.user) {
-      setProfile(null);
-      return;
-    }
-    const p = await fetchProfile(s.user.id);
-    setProfile(p);
-  }, []);
-
   useEffect(() => {
     let active = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    /**
+     * Só publica a sessão depois de confirmar com o servidor que ela vale.
+     *
+     * O aparelho guarda a sessão no localStorage, e o `getSession` devolve ela
+     * na hora, sem perguntar nada a ninguém. Se essa sessão já não servir mais
+     * (senha trocada, acesso revogado, refresh token vencido), o jeito antigo
+     * liberava o painel e só depois caía no login — era o "pisca e volta".
+     * Aqui a sessão e o perfil entram juntos, num estado só.
+     */
+    const aplicar = async (s: Session | null) => {
       if (!active) return;
-      setSession(data.session);
-      await loadProfileFor(data.session);
-      if (active) setLoading(false);
-    });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, s) => {
+      if (!s?.user) {
+        setSession(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      const { profile: p, confiavel } = await fetchProfile(s.user.id);
       if (!active) return;
+
+      if (!confiavel) {
+        setSession(null);
+        setProfile(null);
+        setLoading(false);
+        // Limpa o localStorage, senão repete tudo no próximo abrir.
+        void supabase.auth.signOut();
+        return;
+      }
+
       setSession(s);
-      await loadProfileFor(s);
+      setProfile(p);
       setLoading(false);
+    };
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      void aplicar(s);
     });
+    void supabase.auth.getSession().then(({ data }) => aplicar(data.session));
 
     return () => {
       active = false;
       sub.subscription.unsubscribe();
     };
-  }, [loadProfileFor]);
+  }, []);
+
+  const loadProfileFor = useCallback(async (s: Session | null) => {
+    if (!s?.user) {
+      setProfile(null);
+      return;
+    }
+    const { profile: p } = await fetchProfile(s.user.id);
+    setProfile(p);
+  }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
