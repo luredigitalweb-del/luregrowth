@@ -268,7 +268,10 @@ export function NotificationPrompt() {
   if (!visivel || !userId) return null;
 
   return (
-    <div className="dark-scope fixed inset-x-0 bottom-0 z-[90] flex justify-center p-3 sm:p-6">
+    // pointer-events-none no invólucro: ele ocupa a largura toda da tela, e sem
+    // isso a faixa inteira do rodapé engolia clique e rolagem da página, mesmo
+    // onde não tem card nenhum.
+    <div className="dark-scope pointer-events-none fixed inset-x-0 bottom-0 z-[90] flex justify-center p-3 sm:p-6">
       <div className="pointer-events-auto w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-[0_40px_120px_-30px_rgba(0,0,0,0.85)]">
         <div className="flex items-start gap-3 border-b border-border/60 px-5 py-4">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl gradient-gold text-primary-foreground">
@@ -294,7 +297,9 @@ export function NotificationPrompt() {
         </div>
 
         {!pronto && (
-          <div className="max-h-[55vh] overflow-y-auto px-5 py-4">
+          // overscroll-contain: a rolagem para no fim do card em vez de
+          // continuar na página atrás dele.
+          <div className="max-h-[55vh] overflow-y-auto overscroll-contain px-5 py-4">
             {precisaInstalar ? (
               <ComoInstalarNoIphone />
             ) : (
