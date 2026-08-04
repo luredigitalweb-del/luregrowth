@@ -143,15 +143,16 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
 
-    /* Comportamento de aplicativo, não de site: sem pinça pra dar zoom, sem
-       zoom no toque duplo e sem o texto crescer sozinho quando o celular
-       vira de lado. O `manipulation` mantém o rolar e o toque normais. */
+    /* Comportamento de aplicativo, não de site: sem zoom no toque duplo e sem
+       o texto crescer sozinho quando o celular vira de lado. O `manipulation`
+       mantém o rolar e o toque normais.
+
+       Cuidado: `overflow-x: hidden` aqui parece inofensivo e não é — no iOS
+       ele trava a rolagem da página inteira. Se aparecer barra horizontal,
+       conserte no elemento que está vazando, nunca no html/body. */
     touch-action: manipulation;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    /* Nada de arrastar a página pro lado nem do "elástico" no fim da rolagem. */
-    overflow-x: hidden;
-    overscroll-behavior-y: none;
   }
   /* Campo com fonte menor que 16px faz o iPhone dar zoom sozinho ao focar. */
   input, select, textarea {
