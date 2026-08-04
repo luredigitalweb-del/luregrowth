@@ -8,7 +8,7 @@
  * e seguem direto, como se o service worker não existisse.
  */
 
-const VERSAO = "v1";
+const VERSAO = "v2"; // mudar aqui joga fora o cache antigo
 const CACHE_IMAGENS = `lure-imagens-${VERSAO}`;
 /** Teto conservador: resposta de outro domínio ocupa bem mais espaço que o tamanho real. */
 const MAX_IMAGENS = 80;
@@ -47,14 +47,18 @@ async function aparar(cache) {
   for (const chave of chaves.slice(0, sobrando)) await cache.delete(chave);
 }
 
-function ehImagem(request, url) {
+/**
+ * Só imagem do nosso próprio domínio entra no cache.
+ *
+ * De outro domínio (thumbnail do YouTube, foto do Supabase) a resposta vem
+ * "opaca": o navegador não deixa ler nem o status. Não dá pra saber se veio a
+ * imagem ou um 404 — e guardar um 404 como se fosse imagem boa deixa a falha
+ * grudada no aparelho. Melhor deixar essas passarem direto pra rede.
+ */
+function ehImagemNossa(request, url) {
+  if (url.origin !== self.location.origin) return false;
   if (request.destination === "image") return true;
   return /\.(png|jpe?g|webp|avif|gif|svg|ico)$/i.test(url.pathname);
-}
-
-/** Dados nunca entram no cache: precisam estar sempre frescos. */
-function ehApi(url) {
-  return /\/(rest|auth|realtime|functions)\/v1\//.test(url.pathname);
 }
 
 async function servirImagem(event, request) {
@@ -63,9 +67,9 @@ async function servirImagem(event, request) {
 
   const rede = fetch(request)
     .then(async (resposta) => {
-      // `opaque` é a resposta de outro domínio (as fotos do Supabase). Não dá
-      // pra ler o conteúdo, mas dá pra guardar e devolver igual.
-      if (resposta && (resposta.ok || resposta.type === "opaque")) {
+      // Só o que deu certo de verdade. Aqui é tudo do nosso domínio, então o
+      // status é legível — nada de guardar erro achando que é imagem.
+      if (resposta && resposta.ok) {
         try {
           await cache.put(request, resposta.clone());
           await aparar(cache);
@@ -97,7 +101,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (!url.protocol.startsWith("http")) return;
-  if (ehApi(url) || !ehImagem(request, url)) return;
+  if (!ehImagemNossa(request, url)) return;
 
   event.respondWith(servirImagem(event, request));
 });

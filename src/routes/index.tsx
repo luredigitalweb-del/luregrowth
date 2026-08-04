@@ -740,28 +740,41 @@ const MOBILE_HERO = {
 } as const;
 
 function MobileHero() {
-  // O video decorativo tem 5,4 MB e o `autoPlay` manda baixar na hora, mesmo
-  // com preload="none" — ele engasgava as capas dos cursos no 4G. Entra so
-  // depois que a pagina terminou de carregar; o poster segura a aparencia ate
-  // la, entao visualmente nada muda.
-  const [videoLiberado, setVideoLiberado] = useState(false);
+  // O video decorativo tem 5,4 MB e engasgava as capas dos cursos no 4G.
+  //
+  // O `src` fica sempre no elemento (trocar src depois nem sempre dispara o
+  // carregamento) e quem segura o download e o preload="none": sem autoplay,
+  // o navegador nao baixa nada ate alguem mandar tocar. Chamamos o play()
+  // quando a pagina terminou de carregar. O poster aparece o tempo todo.
+  const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
+    let cancelado = false;
+    const tocar = () => {
+      if (cancelado) return;
+      // Falha silenciosa e esperada: alguns navegadores recusam autoplay.
+      videoRef.current?.play().catch(() => {});
+    };
     if (document.readyState === "complete") {
-      const t = window.setTimeout(() => setVideoLiberado(true), 200);
-      return () => window.clearTimeout(t);
+      const t = window.setTimeout(tocar, 200);
+      return () => {
+        cancelado = true;
+        window.clearTimeout(t);
+      };
     }
-    const liberar = () => setVideoLiberado(true);
-    window.addEventListener("load", liberar, { once: true });
-    return () => window.removeEventListener("load", liberar);
+    window.addEventListener("load", tocar, { once: true });
+    return () => {
+      cancelado = true;
+      window.removeEventListener("load", tocar);
+    };
   }, []);
 
   return (
     <section className="relative overflow-hidden">
       {/* Video na metade direita */}
       <video
-        src={videoLiberado ? MOBILE_HERO.video : undefined}
+        ref={videoRef}
+        src={MOBILE_HERO.video}
         poster={MOBILE_HERO.poster}
-        autoPlay
         muted
         loop
         playsInline
