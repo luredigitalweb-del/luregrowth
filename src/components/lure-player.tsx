@@ -175,6 +175,19 @@ export function LurePlayer({
               warmingRef.current = true;
               e.target.mute?.();
               e.target.playVideo?.();
+              // Se o navegador barrar o autoplay mudo (acontece bastante no app
+              // instalado), o estado PLAYING nunca chega e a flag ficaria presa
+              // em true — sequestrando o primeiro play do aluno. Solta sozinha.
+              window.setTimeout(() => {
+                if (warmingRef.current) {
+                  warmingRef.current = false;
+                  try {
+                    e.target.unMute?.();
+                  } catch {
+                    /* noop */
+                  }
+                }
+              }, 4000);
             } catch {
               warmingRef.current = false;
             }
@@ -288,6 +301,20 @@ export function LurePlayer({
   const togglePlay = useCallback(() => {
     const p = playerRef.current;
     if (!p) return;
+
+    // Clique do aluno cancela o aquecimento na hora. Sem isso, se o autoplay
+    // mudo tiver sido barrado, o onStateChange trataria este play como
+    // pre-carregamento e pausaria o video de volta pro inicio — o famoso
+    // "aperto play e nao vai". O unMute e porque quem mutou fomos nos.
+    if (warmingRef.current) {
+      warmingRef.current = false;
+      try {
+        p.unMute?.();
+      } catch {
+        /* noop */
+      }
+    }
+
     if (ended) {
       p.seekTo(0, true);
       p.playVideo();
@@ -412,7 +439,8 @@ export function LurePlayer({
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover"
           onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+            (e.currentTarget as HTMLImageElement).src =
+              `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
           }}
         />
         <div className="absolute inset-0 bg-black/45" />
