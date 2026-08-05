@@ -8,7 +8,7 @@
  * e seguem direto, como se o service worker não existisse.
  */
 
-const VERSAO = "v3"; // mudar aqui joga fora o cache antigo
+const VERSAO = "v2"; // mudar aqui joga fora o cache antigo
 const CACHE_IMAGENS = `lure-imagens-${VERSAO}`;
 /** Teto conservador: resposta de outro domínio ocupa bem mais espaço que o tamanho real. */
 const MAX_IMAGENS = 80;
