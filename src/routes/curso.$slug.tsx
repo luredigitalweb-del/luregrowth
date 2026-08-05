@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -16,6 +16,7 @@ import {
   Pencil,
   Loader2,
   Trash2,
+  Plus,
   X,
   ListChecks,
   LifeBuoy,
@@ -78,20 +79,26 @@ type Lesson = {
   kind?: "video" | "prova";
 };
 
-const lessons: Lesson[] = [
+/** As cinco aulas que todo curso já nasce tendo. Da sexta em diante é o admin
+ *  quem cria, e a aula passa a existir como linha em `lesson_videos`. */
+const AULAS_BASE: Lesson[] = [
   { n: 1, title: "O Poder do Social Selling", duration: "25:14" },
   { n: 2, title: "Otimização de Perfil B2B", duration: "18:42" },
   { n: 3, title: "Conteúdo de Conversão", duration: "32:10" },
   { n: 4, title: "Scripts de Abordagem", duration: "21:05" },
   { n: 5, title: "Fechamento e Follow-up", duration: "28:50" },
-  {
-    n: 6,
-    title: "Prova Final — Certificado de Conclusão",
-    duration: "—",
-    locked: true,
-    kind: "prova",
-  },
 ];
+
+/** A prova fica fora da contagem: se ficasse no 6, a primeira aula nova criada
+ *  cairia em cima dela — mesmo `n`, mesma chave em `lesson_progress`. */
+const PROVA_N = 9999;
+const PROVA: Lesson = {
+  n: PROVA_N,
+  title: "Prova Final — Certificado de Conclusão",
+  duration: "—",
+  locked: true,
+  kind: "prova",
+};
 
 type Comment = {
   id: string;
@@ -109,7 +116,22 @@ function CoursePage() {
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   /** Onde o aluno parou em cada aula (segundos), vindo do banco. */
   const [resumeAt, setResumeAt] = useState<Record<number, number>>({});
-  const active = lessons.find((l) => l.n === currentLesson)!;
+  // Metadados por aula (vídeo + título/descrição editáveis + duração), do banco
+  const [videos, setVideos] = useState<Record<number, LessonMeta>>({});
+
+  // A grade do curso: as cinco fixas mais o que o admin criou. Uma aula nova
+  // existe porque tem linha em `lesson_videos` — é de lá que ela aparece aqui.
+  const lessons = useMemo(() => {
+    const extras = Object.keys(videos)
+      .map(Number)
+      .filter((n) => n > AULAS_BASE.length && n !== PROVA_N)
+      .sort((a, b) => a - b)
+      .map<Lesson>((n) => ({ n, title: `Aula ${n}`, duration: "—" }));
+    return [...AULAS_BASE, ...extras, PROVA];
+  }, [videos]);
+
+  // Se a aula aberta some (o admin apagou), cai na primeira em vez de quebrar.
+  const active = lessons.find((l) => l.n === currentLesson) ?? lessons[0];
   const doneCount = completed.size;
   const progress = Math.round((doneCount / lessons.length) * 100);
   const isCurrentDone = completed.has(active.n);
@@ -143,8 +165,6 @@ function CoursePage() {
     if (nextLesson) setCurrentLesson(nextLesson.n);
   };
 
-  // Metadados por aula (vídeo + título/descrição editáveis + duração), do banco
-  const [videos, setVideos] = useState<Record<number, LessonMeta>>({});
   const currentMeta = videos[currentLesson] ?? {};
   const currentUrl = currentMeta.url;
 
@@ -201,6 +221,35 @@ function CoursePage() {
   );
 
   const saveVideo = (url: string) => saveLessonMeta({ youtube_url: url || null });
+
+  /** Cria a próxima aula do curso e já abre ela pro admin colar o vídeo. */
+  const addLesson = useCallback(async () => {
+    const usados = Object.keys(videos)
+      .map(Number)
+      .filter((n) => n !== PROVA_N);
+    const proximo = Math.max(AULAS_BASE.length, ...usados) + 1;
+    const { error } = await supabase.from("lesson_videos").insert({
+      course_slug: slug,
+      lesson_n: proximo,
+      title: `Aula ${proximo}`,
+      updated_by: session?.user?.id ?? null,
+    });
+    if (error) return;
+    await loadVideos();
+    setCurrentLesson(proximo);
+  }, [videos, slug, session?.user?.id, loadVideos]);
+
+  /** Só vale pras aulas criadas depois das cinco fixas — as base não somem. */
+  const removeLesson = useCallback(
+    async (n: number) => {
+      if (n <= AULAS_BASE.length) return;
+      if (!window.confirm(`Remover a aula ${n} deste curso?`)) return;
+      await supabase.from("lesson_videos").delete().eq("course_slug", slug).eq("lesson_n", n);
+      await loadVideos();
+      setCurrentLesson((atual) => (atual === n ? 1 : atual));
+    },
+    [slug, loadVideos],
+  );
 
   // Captura a duração do próprio vídeo do YouTube e guarda no banco.
   const onVideoDuration = useCallback(
@@ -494,6 +543,9 @@ function CoursePage() {
               setCurrentLesson={setCurrentLesson}
               completed={completed}
               videos={videos}
+              isAdmin={isAdmin}
+              onAdd={addLesson}
+              onRemove={removeLesson}
               className="mt-3"
             />
           </section>
@@ -559,6 +611,9 @@ function CoursePage() {
             setCurrentLesson={setCurrentLesson}
             completed={completed}
             videos={videos}
+            isAdmin={isAdmin}
+            onAdd={addLesson}
+            onRemove={removeLesson}
             className="flex-1 overflow-y-auto p-2.5"
           />
 
@@ -594,6 +649,9 @@ function LessonList({
   setCurrentLesson,
   completed,
   videos,
+  isAdmin = false,
+  onAdd,
+  onRemove,
   className = "",
 }: {
   lessons: Lesson[];
@@ -601,8 +659,28 @@ function LessonList({
   setCurrentLesson: (n: number) => void;
   completed: Set<number>;
   videos: Record<number, LessonMeta>;
+  isAdmin?: boolean;
+  onAdd?: () => void;
+  onRemove?: (n: number) => void;
   className?: string;
 }) {
+  /* O "+" entra antes da prova: ela fecha o curso e tem que continuar por
+     último, mesmo depois de o admin criar aulas novas. */
+  const botaoAdicionar = isAdmin && onAdd && (
+    <li key="adicionar">
+      <button
+        type="button"
+        onClick={onAdd}
+        className="flex w-full items-center gap-3 rounded-xl border border-dashed border-border p-2.5 text-left text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background">
+          <Plus className="h-4 w-4" />
+        </span>
+        <span className="text-sm font-semibold">Adicionar aula</span>
+      </button>
+    </li>
+  );
+
   return (
           <ul className={`space-y-1 ${className}`}>
         {lessons.map((l) => {
@@ -610,8 +688,12 @@ function LessonList({
           const isProva = l.kind === "prova";
           const isDone = completed.has(l.n);
           const hasVideo = !!videos[l.n]?.url;
+          // As cinco primeiras são do catálogo e não saem; as outras o admin criou.
+          const podeRemover = isAdmin && !isProva && l.n > AULAS_BASE.length;
           return (
-            <li key={l.n}>
+            <Fragment key={l.n}>
+            {isProva && botaoAdicionar}
+            <li className="relative">
               <button
                 onClick={() => !l.locked && setCurrentLesson(l.n)}
                 disabled={l.locked}
@@ -665,7 +747,22 @@ function LessonList({
                   </div>
                 </div>
               </button>
+
+              {/* Irmão do botão da aula, não filho: botão dentro de botão não
+                  vale, e o clique de remover subiria pra linha inteira. */}
+              {podeRemover && (
+                <button
+                  type="button"
+                  onClick={() => onRemove?.(l.n)}
+                  title={`Remover aula ${l.n}`}
+                  aria-label={`Remover aula ${l.n}`}
+                  className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground transition hover:bg-red-500/10 hover:text-red-400"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </li>
+            </Fragment>
           );
         })}
       </ul>
