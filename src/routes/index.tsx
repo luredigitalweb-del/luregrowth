@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/lib/supabase";
 import {
@@ -24,6 +32,8 @@ import {
   Menu,
   ArrowRight,
   X,
+  Lock,
+  LockOpen,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Avatar, initialsOf } from "@/components/avatar";
@@ -398,6 +408,33 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
 const CoversContext = createContext<Record<string, string>>({});
 const coverKey = (sectionId: string, title: string) => `${sectionId}|${title.trim()}`;
 
+/**
+ * Cadeado do card, indexado pela mesma chave das capas.
+ *
+ * `modules.locked` diz se o módulo ainda não está no ar. Para o aluno o card
+ * não abre; para o admin o cadeado vira botão e destrava na hora, para todo
+ * mundo. Guardamos o `id` junto porque o catálogo da home é estático e só o
+ * par seção+título liga o card à linha do banco.
+ */
+type LockInfo = { id: string; locked: boolean };
+const LocksContext = createContext<{
+  byKey: Record<string, LockInfo>;
+  setLocked: (key: string, id: string, locked: boolean) => void;
+}>({ byKey: {}, setLocked: () => {} });
+
+function useModuleLock(sectionId: string, title: string) {
+  const { byKey, setLocked } = useContext(LocksContext);
+  const info = byKey[coverKey(sectionId, title)];
+  return {
+    locked: info?.locked ?? false,
+    /** Sem linha no banco não há o que gravar — some o botão em vez de dar erro. */
+    podeTrancar: !!info,
+    alternar: () => {
+      if (info) setLocked(coverKey(sectionId, title), info.id, !info.locked);
+    },
+  };
+}
+
 /** Titulo do modulo -> slug usado na URL do curso e no banco. */
 export const moduleSlug = (title: string) =>
   title
@@ -458,30 +495,53 @@ export function useLoadCourseProgress(userId?: string) {
 function Portal() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [covers, setCovers] = useState<Record<string, string>>({});
+  const [locks, setLocks] = useState<Record<string, LockInfo>>({});
   const { session } = useAuth();
   const courseProgress = useLoadCourseProgress(session?.user?.id);
 
   useEffect(() => {
     let alive = true;
+    // Sem filtro de capa: justamente os módulos trancados são os que não têm
+    // capa nenhuma, e é deles que precisamos saber o estado do cadeado.
     supabase
       .from("modules")
-      .select("section_id, title, cover_url")
-      .not("cover_url", "is", null)
+      .select("id, section_id, title, cover_url, locked")
       .then(({ data }) => {
         if (!alive || !data) return;
-        const map: Record<string, string> = {};
-        for (const row of data as { section_id: string; title: string; cover_url: string }[]) {
-          if (row.cover_url) map[coverKey(row.section_id, row.title)] = row.cover_url;
+        const capas: Record<string, string> = {};
+        const cadeados: Record<string, LockInfo> = {};
+        for (const row of data as {
+          id: string;
+          section_id: string;
+          title: string;
+          cover_url: string | null;
+          locked: boolean | null;
+        }[]) {
+          const chave = coverKey(row.section_id, row.title);
+          if (row.cover_url) capas[chave] = row.cover_url;
+          cadeados[chave] = { id: row.id, locked: !!row.locked };
         }
-        setCovers(map);
+        setCovers(capas);
+        setLocks(cadeados);
       });
     return () => {
       alive = false;
     };
   }, []);
 
+  // Destrava na tela primeiro e grava depois: o admin vê o efeito no clique.
+  // Se o banco recusar (RLS, rede), o cadeado volta pro lugar.
+  const setLocked = useCallback(async (key: string, id: string, locked: boolean) => {
+    setLocks((prev) => ({ ...prev, [key]: { id, locked } }));
+    const { error } = await supabase.from("modules").update({ locked }).eq("id", id);
+    if (error) setLocks((prev) => ({ ...prev, [key]: { id, locked: !locked } }));
+  }, []);
+
+  const lockCtx = useMemo(() => ({ byKey: locks, setLocked }), [locks, setLocked]);
+
   return (
     <CoversContext.Provider value={covers}>
+      <LocksContext.Provider value={lockCtx}>
       <ProgressContext.Provider value={courseProgress}>
         <div className="min-h-screen bg-background text-foreground">
           <div className="flex">
@@ -515,6 +575,7 @@ function Portal() {
           </div>
         </div>
       </ProgressContext.Provider>
+      </LocksContext.Provider>
     </CoversContext.Provider>
   );
 }
@@ -1426,15 +1487,30 @@ export function MobileModuleCard({
   const slug = moduleSlug(m.title);
   const progress = useCourseProgress()[slug] ?? 0;
 
+  const { isAdmin } = useAuth();
+  const { locked, podeTrancar, alternar } = useModuleLock(sectionId, m.title);
+  const bloqueado = locked && !isAdmin;
+
   const linkProps = m.moduleId
     ? ({ to: "/modulo/$id", params: { id: m.moduleId } } as const)
     : ({ to: "/curso/$slug", params: { slug } } as const);
 
+  // O cadeado do admin é botão e mora fora do <Link> — link não pode ter botão
+  // dentro, e no toque do celular os dois disparariam juntos.
   return (
+    <div
+      className="lure-rise group relative"
+      style={{ "--d": `${index * 70}ms` } as React.CSSProperties}
+    >
     <Link
       {...linkProps}
-      className="lure-rise group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface/60 transition active:scale-[0.98]"
-      style={{ "--d": `${index * 70}ms` } as React.CSSProperties}
+      onClick={(e) => {
+        if (bloqueado) e.preventDefault();
+      }}
+      aria-disabled={bloqueado}
+      className={`relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface/60 transition ${
+        bloqueado ? "cursor-not-allowed" : "active:scale-[0.98]"
+      }`}
     >
       <div className="relative aspect-[9/16] w-full overflow-hidden bg-black">
         {thumb ? (
@@ -1457,9 +1533,16 @@ export function MobileModuleCard({
           </div>
         )}
         <div className="compat-scrim-y absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+        {locked && <div className="absolute inset-0 bg-background/45" />}
         {m.tag && (
           <span className="absolute left-2.5 top-2.5 rounded-lg bg-black/70 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur">
             {m.tag}
+          </span>
+        )}
+        {/* Selo do aluno. O do admin é botão e fica fora do <Link>, logo abaixo. */}
+        {locked && !isAdmin && (
+          <span className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-lg bg-black/70 text-white/85 backdrop-blur">
+            <Lock className="h-3.5 w-3.5" />
           </span>
         )}
       </div>
@@ -1484,6 +1567,22 @@ export function MobileModuleCard({
         </div>
       </div>
     </Link>
+
+    {/* Cadeado do admin: um toque libera o módulo pra todo mundo. */}
+    {isAdmin && podeTrancar && (
+      <button
+        type="button"
+        onClick={alternar}
+        title={locked ? "Liberar módulo para os alunos" : "Trancar módulo"}
+        aria-label={locked ? "Liberar módulo para os alunos" : "Trancar módulo"}
+        className={`absolute right-2.5 top-2.5 z-30 grid h-8 w-8 place-items-center rounded-lg backdrop-blur transition active:scale-90 ${
+          locked ? "bg-primary/25 text-primary" : "bg-black/60 text-white/70"
+        }`}
+      >
+        {locked ? <Lock className="h-3.5 w-3.5" /> : <LockOpen className="h-3.5 w-3.5" />}
+      </button>
+    )}
+    </div>
   );
 }
 
@@ -1499,27 +1598,33 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
   const slug = moduleSlug(m.title);
   const progress = useCourseProgress()[slug] ?? 0;
 
-  // Todos os cards são clicáveis (removido o estado "em gravação").
-  const emGravacao = false;
+  const { isAdmin } = useAuth();
+  const { locked, podeTrancar, alternar } = useModuleLock(sectionId, m.title);
+  // O admin atravessa o cadeado — precisa entrar pra montar o módulo.
+  const bloqueado = locked && !isAdmin;
 
   const linkProps = m.moduleId
     ? ({ to: "/modulo/$id", params: { id: m.moduleId } } as const)
     : ({ to: "/curso/$slug", params: { slug } } as const);
 
-  // Sobre o `transition-[transform,border-color]` abaixo: `transition` sozinho
-  // anima *todas* as propriedades, sombra inclusive — e animar sombra repinta o
-  // card inteiro. Como o cursor atravessa varios cards enquanto a pessoa rola,
-  // isso vira repintura em serie. Listando so as duas, a sombra ainda aparece no
-  // hover, so que de uma vez.
+  // O botão do cadeado fica fora do <Link> de propósito: link não pode ter
+  // botão dentro, e sem essa separação o mesmo clique destravava e navegava.
+  // Por isso o hover mora no <div> de fora, e o card inteiro é o `group`.
+  //
+  // Sobre as transições: `transition` sozinho anima *todas* as propriedades,
+  // sombra inclusive — e animar sombra repinta o card inteiro. Como o cursor
+  // atravessa varios cards enquanto a pessoa rola, isso vira repintura em
+  // serie. Separadas assim, a sombra ainda aparece no hover, so que de uma vez.
   return (
+    <div className="group relative h-[440px] transition-transform duration-200 hover:-translate-y-1">
     <Link
       {...linkProps}
       onClick={(e) => {
-        if (emGravacao) e.preventDefault();
+        if (bloqueado) e.preventDefault();
       }}
-      aria-disabled={emGravacao}
-      className={`group relative flex h-[440px] flex-col overflow-hidden rounded-2xl border border-border bg-card transition-[transform,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-card)] ${
-        emGravacao ? "cursor-not-allowed" : ""
+      aria-disabled={bloqueado}
+      className={`relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition-[border-color] duration-200 group-hover:border-primary/40 group-hover:shadow-[var(--shadow-card)] ${
+        bloqueado ? "cursor-not-allowed" : ""
       }`}
     >
       {/* Optional thumb background */}
@@ -1553,14 +1658,26 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
         </>
       )}
 
-      {/* Hover play */}
-      {!emGravacao && (
+      {/* Véu no card trancado: o preto do fundo sozinho não diz "fechado". */}
+      {locked && <div className="pointer-events-none absolute inset-0 bg-background/45" />}
+
+      {/* Hover play — no lugar dele o admin tem o cadeado, e o card trancado
+          não tem o que tocar. Nos poucos cards sem linha no banco não há
+          cadeado pra pôr ali, então o play continua valendo até pro admin. */}
+      {!locked && (!isAdmin || !podeTrancar) && (
         // `group-hover:backdrop-blur` em vez de `backdrop-blur` solto: com
         // opacity-0 nao se ve nada, mas o borrao continua sendo calculado do
         // mesmo jeito, em todo card da tela, a cada quadro. Assim ele so passa a
         // existir quando o mouse esta em cima — mesmo visual, custo zero parado.
         <div className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/70 opacity-0 transition group-hover:opacity-100 group-hover:backdrop-blur">
           <Play className="h-4 w-4 fill-primary text-primary" />
+        </div>
+      )}
+
+      {/* Selo do aluno: fixo, porque no celular não existe hover pra revelar. */}
+      {locked && !isAdmin && (
+        <div className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground">
+          <Lock className="h-4 w-4" />
         </div>
       )}
 
@@ -1588,9 +1705,9 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
       </div>
 
       {/* "Em gravação" overlay — aparece ao passar o mouse */}
-      {emGravacao && (
+      {locked && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/70 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-background/80 px-5 py-3 backdrop-blur">
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-background/80 px-5 py-3 text-center backdrop-blur">
             <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
@@ -1598,10 +1715,31 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
               </span>
               Em gravação...
             </span>
-            <span className="text-[11px] text-muted-foreground">Novo módulo em breve</span>
+            <span className="text-[11px] text-muted-foreground">
+              {isAdmin ? "Clique no cadeado para liberar" : "Novo módulo em breve"}
+            </span>
           </div>
         </div>
       )}
     </Link>
+
+    {/* Só o admin vê. Trancado, o cadeado fica sempre à mostra; liberado, ele
+        aparece no hover pra não poluir o card de quem já está no ar. */}
+    {isAdmin && podeTrancar && (
+      <button
+        type="button"
+        onClick={alternar}
+        title={locked ? "Liberar módulo para os alunos" : "Trancar módulo"}
+        aria-label={locked ? "Liberar módulo para os alunos" : "Trancar módulo"}
+        className={`absolute right-5 top-5 z-30 flex h-10 w-10 items-center justify-center rounded-full border transition ${
+          locked
+            ? "border-primary/40 bg-background/85 text-primary opacity-100"
+            : "border-border bg-background/70 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground"
+        }`}
+      >
+        {locked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
+      </button>
+    )}
+    </div>
   );
 }
