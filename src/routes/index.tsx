@@ -1499,16 +1499,20 @@ export function MobileModuleCard({
   // dentro, e no toque do celular os dois disparariam juntos.
   return (
     <div
-      className="lure-rise group relative"
+      className="lure-rise group relative h-full"
       style={{ "--d": `${index * 70}ms` } as React.CSSProperties}
     >
+    {/* `h-full` nos dois: o item da grade agora e a <div>, e sem repassar a
+        altura pro <Link> o card para no tamanho do conteudo. Numa dupla em
+        que so um card mostra o titulo, os dois terminavam em alturas
+        diferentes. */}
     <Link
       {...linkProps}
       onClick={(e) => {
         if (bloqueado) e.preventDefault();
       }}
       aria-disabled={bloqueado}
-      className={`relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface/60 transition ${
+      className={`relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface/60 transition ${
         bloqueado ? "cursor-not-allowed" : "active:scale-[0.98]"
       }`}
     >
