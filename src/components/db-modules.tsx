@@ -128,9 +128,12 @@ function Rail({
         </div>
       </div>
 
+      {/* Mesmo cuidado do carrossel da home: `snap-mandatory` junto de
+          `scroll-smooth` faz o container se reencaixar sozinho a cada hover de
+          card e engolir a rolagem vertical da página no PC. */}
       <div
         ref={scroller}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-proximity gap-5 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((m) => (
           <div

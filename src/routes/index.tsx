@@ -1379,9 +1379,16 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
           <ChevronRight className="h-5 w-5" />
         </button>
 
+        {/* Cuidado com `snap-mandatory` + `scroll-smooth` juntos aqui: o carrossel
+            volta a se encaixar sozinho a cada mexida de layout — e no PC o card
+            sob o cursor sobe no hover (`hover:-translate-y-1`) o tempo todo
+            enquanto a pessoa rola. Cada reencaixe vira uma animação que cancela a
+            rolagem da página, e ela parece travada. No celular não aparece porque
+            não tem hover e a lista vira grade. `snap-proximity` sugere o encaixe
+            sem forçar; o "suave" das setas continua vindo do scrollBy. */}
         <div
           ref={scrollerRef}
-          className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-proximity gap-5 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {section.modules.map((m) => (
             <div
