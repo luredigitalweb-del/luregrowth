@@ -167,11 +167,14 @@ function Rail({
 }
 
 function ModuleCard({ m }: { m: CardModule }) {
+  // Nao troque o `transition-[transform,border-color]` por `transition` solto:
+  // animar sombra repinta o card inteiro, e o cursor passa por varios deles
+  // enquanto a pessoa rola.
   return (
     <Link
       to="/modulo/$id"
       params={{ id: m.id }}
-      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-card)]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition-[transform,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-card)]"
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden">
         {m.cover_url ? (
@@ -195,7 +198,9 @@ function ModuleCard({ m }: { m: CardModule }) {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-        <div className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-background/70 text-primary opacity-0 backdrop-blur transition group-hover:opacity-100">
+        {/* Blur so no hover: com opacity-0 nao aparece, mas seria calculado a cada
+            quadro em todo card da tela. */}
+        <div className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-background/70 text-primary opacity-0 transition group-hover:opacity-100 group-hover:backdrop-blur">
           <Play className="h-4 w-4 fill-current" />
         </div>
       </div>

@@ -525,8 +525,10 @@ export function MobileTopBar() {
 
   return (
     <>
+      {/* Mesmo motivo da barra do desktop: fixa no topo + blur = reborrar a cada
+          quadro de rolagem. */}
       <header
-        className="sticky top-0 z-40 flex items-center justify-between bg-background/80 px-4 pb-3 backdrop-blur-xl lg:hidden"
+        className="sticky top-0 z-40 flex items-center justify-between bg-background px-4 pb-3 lg:hidden"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
       >
         <button
@@ -1261,7 +1263,11 @@ export function TopBar() {
   const email = profile?.email || session?.user?.email;
   const roleLabel = isAdmin ? "Administrador" : "Membro";
   return (
-    <header className="dark-scope sticky top-0 z-30 flex h-18 items-center justify-between gap-4 border-b border-border/50 bg-background/90 px-6 md:px-10 backdrop-blur-xl shadow-[0_10px_30px_-20px_rgba(0,0,0,0.6)]">
+    // Sem backdrop-blur aqui de proposito: a barra fica parada no topo enquanto
+    // a pagina inteira corre por baixo, entao o navegador teria que reborrar essa
+    // faixa a cada quadro — e a rolagem engasga. Como o fundo ja era /90, opaco
+    // fica praticamente igual e nao custa nada.
+    <header className="dark-scope sticky top-0 z-30 flex h-18 items-center justify-between gap-4 border-b border-border/50 bg-background px-6 md:px-10 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.6)]">
       <div className="flex items-center gap-3 rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-foreground shadow-sm">
         <Search className="h-4 w-4 text-muted-foreground" />
         <input
@@ -1500,6 +1506,11 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
     ? ({ to: "/modulo/$id", params: { id: m.moduleId } } as const)
     : ({ to: "/curso/$slug", params: { slug } } as const);
 
+  // Sobre o `transition-[transform,border-color]` abaixo: `transition` sozinho
+  // anima *todas* as propriedades, sombra inclusive — e animar sombra repinta o
+  // card inteiro. Como o cursor atravessa varios cards enquanto a pessoa rola,
+  // isso vira repintura em serie. Listando so as duas, a sombra ainda aparece no
+  // hover, so que de uma vez.
   return (
     <Link
       {...linkProps}
@@ -1507,7 +1518,7 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
         if (emGravacao) e.preventDefault();
       }}
       aria-disabled={emGravacao}
-      className={`group relative flex h-[440px] flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-card)] ${
+      className={`group relative flex h-[440px] flex-col overflow-hidden rounded-2xl border border-border bg-card transition-[transform,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-card)] ${
         emGravacao ? "cursor-not-allowed" : ""
       }`}
     >
@@ -1544,7 +1555,11 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
 
       {/* Hover play */}
       {!emGravacao && (
-        <div className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/70 opacity-0 backdrop-blur transition group-hover:opacity-100">
+        // `group-hover:backdrop-blur` em vez de `backdrop-blur` solto: com
+        // opacity-0 nao se ve nada, mas o borrao continua sendo calculado do
+        // mesmo jeito, em todo card da tela, a cada quadro. Assim ele so passa a
+        // existir quando o mouse esta em cima — mesmo visual, custo zero parado.
+        <div className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/70 opacity-0 transition group-hover:opacity-100 group-hover:backdrop-blur">
           <Play className="h-4 w-4 fill-primary text-primary" />
         </div>
       )}
@@ -1552,7 +1567,7 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
       {/* Header */}
       <div className="relative flex flex-1 flex-col p-6">
         {m.tag && (
-          <span className="mb-4 inline-flex w-fit items-center rounded-md bg-background/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
+          <span className="mb-4 inline-flex w-fit items-center rounded-md bg-background/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground">
             {m.tag}
           </span>
         )}
