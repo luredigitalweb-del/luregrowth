@@ -446,8 +446,14 @@ const AuthorsContext = createContext<Record<string, string>>({});
 type LockInfo = { id: string; locked: boolean };
 const LocksContext = createContext<{
   byKey: Record<string, LockInfo>;
+  /**
+   * Falso até a consulta voltar. Sem isso o catálogo pinta antes de saber
+   * quem está trancado, e o aluno vê os módulos fechados por um instante
+   * antes de eles sumirem.
+   */
+  carregado: boolean;
   setLocked: (key: string, id: string, locked: boolean) => void;
-}>({ byKey: {}, setLocked: () => {} });
+}>({ byKey: {}, carregado: false, setLocked: () => {} });
 
 function useModuleLock(chave: string) {
   const { byKey, setLocked } = useContext(LocksContext);
@@ -559,6 +565,7 @@ function Portal() {
   const [covers, setCovers] = useState<Record<string, string>>({});
   const [authors, setAuthors] = useState<Record<string, string>>({});
   const [locks, setLocks] = useState<Record<string, LockInfo>>({});
+  const [locksCarregados, setLocksCarregados] = useState(false);
   const { session } = useAuth();
   const lessonTotals = useLessonTotals();
   const courseProgress = useLoadCourseProgress(session?.user?.id, lessonTotals);
@@ -591,6 +598,7 @@ function Portal() {
         setCovers(capas);
         setAuthors(nomes);
         setLocks(cadeados);
+        setLocksCarregados(true);
       });
     return () => {
       alive = false;
@@ -605,7 +613,10 @@ function Portal() {
     if (error) setLocks((prev) => ({ ...prev, [key]: { id, locked: !locked } }));
   }, []);
 
-  const lockCtx = useMemo(() => ({ byKey: locks, setLocked }), [locks, setLocked]);
+  const lockCtx = useMemo(
+    () => ({ byKey: locks, carregado: locksCarregados, setLocked }),
+    [locks, locksCarregados, setLocked],
+  );
 
   return (
     <CoversContext.Provider value={covers}>
@@ -1320,7 +1331,13 @@ function ProgressPill() {
   // `lessons` do catalogo dava um total de fantasia (mais de 300 aulas).
   const byCourse = useCourseProgress();
   const totais = useContext(TotalsContext);
-  const mods = sections.flatMap((s) => s.modules);
+  const { byKey } = useContext(LocksContext);
+  const { isAdmin } = useAuth();
+  // Modulo trancado nao conta pro aluno: ele nem enxerga o card, e entrar no
+  // divisor so faria a barra dele nunca chegar ao fim.
+  const mods = sections.flatMap((s) =>
+    s.modules.filter((m) => isAdmin || !byKey[moduleKey(s.id, m)]?.locked),
+  );
   const aulasDe = (m: Module) => totais[moduleSlug(m.title)] ?? AULAS_FIXAS;
   const total = mods.reduce((a, m) => a + aulasDe(m), 0);
   const done = mods.reduce(
@@ -1464,6 +1481,25 @@ function HeroBanner() {
 
 function SectionRow({ section }: { section: (typeof sections)[number] }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const { isAdmin } = useAuth();
+  const { byKey, carregado } = useContext(LocksContext);
+
+  // Modulo trancado nao existe para o aluno: nem card, nem cadeado, nem "em
+  // breve". O admin continua vendo tudo, senao nao teria como destravar.
+  //
+  // Le o contexto direto em vez de `useModuleLock` por modulo: hook dentro de
+  // laco nao vale, e a ordem dos hooks mudaria a cada modulo trancado.
+  const modules = isAdmin
+    ? section.modules
+    : section.modules.filter((m) => !byKey[moduleKey(section.id, m)]?.locked);
+
+  // Enquanto nao se sabe quem esta trancado, o aluno nao ve nada — mostrar e
+  // depois esconder seria justamente entregar o que era pra ficar escondido.
+  if (!isAdmin && !carregado) return null;
+
+  // Secao inteira trancada sai da pagina — titulo sozinho, sem card embaixo,
+  // parece pagina quebrada.
+  if (modules.length === 0) return null;
 
   const scrollBy = (dir: 1 | -1) => {
     const el = scrollerRef.current;
@@ -1488,7 +1524,9 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
           </h2>
         </div>
         <div className="flex shrink-0 items-center gap-4 text-sm text-muted-foreground">
-          <span className="hidden lg:inline">{section.modules.length} módulos</span>
+          <span className="hidden lg:inline">
+            {modules.length} {modules.length === 1 ? "módulo" : "módulos"}
+          </span>
           <button className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[var(--nav)] transition hover:brightness-125 lg:text-sm lg:text-muted-foreground lg:hover:text-foreground">
             Ver todos <ChevronRight className="h-4 w-4" />
           </button>
@@ -1497,7 +1535,7 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
 
       {/* Mobile: grade de duas colunas, como um app */}
       <div className="grid grid-cols-2 gap-3.5 lg:hidden">
-        {section.modules.map((m, i) => (
+        {modules.map((m, i) => (
           <MobileModuleCard key={m.title} m={m} sectionId={section.id} index={i} />
         ))}
       </div>
@@ -1532,7 +1570,7 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
           ref={scrollerRef}
           className="flex snap-x snap-proximity gap-5 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {section.modules.map((m) => (
+          {modules.map((m) => (
             <div
               key={m.title}
               data-card
