@@ -31,6 +31,7 @@ import { openSettings } from "@/components/profile-settings-modal";
 import { LurePlayer } from "@/components/lure-player";
 import { InlineTitle, InlineText } from "@/components/inline-edit";
 import { uploadMaterial, validateMaterialFile } from "@/lib/sections";
+import { AULAS_FIXAS, PROVA_N } from "@/lib/aulas";
 
 export const Route = createFileRoute("/curso/$slug")({
   head: ({ params }) => {
@@ -79,8 +80,9 @@ type Lesson = {
   kind?: "video" | "prova";
 };
 
-/** As cinco aulas que todo curso já nasce tendo. Da sexta em diante é o admin
- *  quem cria, e a aula passa a existir como linha em `lesson_videos`. */
+/** As cinco aulas que todo curso já nasce tendo (`AULAS_FIXAS`). Da sexta em
+ *  diante é o admin quem cria, e a aula passa a existir como linha em
+ *  `lesson_videos`. Quem conta isso pro resto do app é `totalDeAulas`. */
 const AULAS_BASE: Lesson[] = [
   { n: 1, title: "O Poder do Social Selling", duration: "25:14" },
   { n: 2, title: "Otimização de Perfil B2B", duration: "18:42" },
@@ -89,9 +91,6 @@ const AULAS_BASE: Lesson[] = [
   { n: 5, title: "Fechamento e Follow-up", duration: "28:50" },
 ];
 
-/** A prova fica fora da contagem: se ficasse no 6, a primeira aula nova criada
- *  cairia em cima dela — mesmo `n`, mesma chave em `lesson_progress`. */
-const PROVA_N = 9999;
 const PROVA: Lesson = {
   n: PROVA_N,
   title: "Prova Final — Certificado de Conclusão",
@@ -124,7 +123,7 @@ function CoursePage() {
   const lessons = useMemo(() => {
     const extras = Object.keys(videos)
       .map(Number)
-      .filter((n) => n > AULAS_BASE.length && n !== PROVA_N)
+      .filter((n) => n > AULAS_FIXAS && n !== PROVA_N)
       .sort((a, b) => a - b)
       .map<Lesson>((n) => ({ n, title: `Aula ${n}`, duration: "—" }));
     return [...AULAS_BASE, ...extras, PROVA];
@@ -133,7 +132,10 @@ function CoursePage() {
   // Se a aula aberta some (o admin apagou), cai na primeira em vez de quebrar.
   const active = lessons.find((l) => l.n === currentLesson) ?? lessons[0];
   const doneCount = completed.size;
-  const progress = Math.round((doneCount / lessons.length) * 100);
+  // A prova fica fora da conta — ninguem a conclui, e com ela no divisor o
+  // aluno que terminasse tudo parava em 94%. E o mesmo total que o card mostra.
+  const totalAulas = lessons.filter((l) => l.kind !== "prova").length;
+  const progress = totalAulas ? Math.round((doneCount / totalAulas) * 100) : 0;
   const isCurrentDone = completed.has(active.n);
   const nextLesson = lessons.find((l) => l.n > active.n && !l.locked);
   const isLast = !nextLesson;
@@ -227,7 +229,7 @@ function CoursePage() {
     const usados = Object.keys(videos)
       .map(Number)
       .filter((n) => n !== PROVA_N);
-    const proximo = Math.max(AULAS_BASE.length, ...usados) + 1;
+    const proximo = Math.max(AULAS_FIXAS, ...usados) + 1;
     const { error } = await supabase.from("lesson_videos").insert({
       course_slug: slug,
       lesson_n: proximo,
@@ -242,7 +244,7 @@ function CoursePage() {
   /** Só vale pras aulas criadas depois das cinco fixas — as base não somem. */
   const removeLesson = useCallback(
     async (n: number) => {
-      if (n <= AULAS_BASE.length) return;
+      if (n <= AULAS_FIXAS) return;
       if (!window.confirm(`Remover a aula ${n} deste curso?`)) return;
       await supabase.from("lesson_videos").delete().eq("course_slug", slug).eq("lesson_n", n);
       await loadVideos();
@@ -407,7 +409,7 @@ function CoursePage() {
           <div className="min-w-0 flex-1 md:hidden">
             <div className="truncate text-[13px] font-semibold leading-tight">{courseTitle}</div>
             <div className="text-[11px] leading-tight text-muted-foreground">
-              Aula {active.n} de {lessons.length}
+              Aula {active.n} de {totalAulas}
             </div>
           </div>
         </div>
@@ -467,7 +469,7 @@ function CoursePage() {
                 <Clock className="h-3.5 w-3.5" /> {displayDuration}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:text-xs">
-                <Play className="h-3 w-3 fill-current" /> Aula {active.n} de {lessons.length}
+                <Play className="h-3 w-3 fill-current" /> Aula {active.n} de {totalAulas}
               </span>
               {isCurrentDone && (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 sm:text-xs">
@@ -526,7 +528,7 @@ function CoursePage() {
                 <ListChecks className="h-3.5 w-3.5" /> Conteúdo do curso
               </div>
               <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                {doneCount}/{lessons.length} concluídas
+                {doneCount}/{totalAulas} concluídas
               </span>
             </div>
 
@@ -597,7 +599,7 @@ function CoursePage() {
               </div>
               <div className="text-sm">
                 <div className="font-semibold">
-                  {doneCount} de {lessons.length} concluídas
+                  {doneCount} de {totalAulas} concluídas
                 </div>
                 <div className="text-xs text-muted-foreground">Continue de onde parou</div>
               </div>
@@ -689,7 +691,7 @@ function LessonList({
           const isDone = completed.has(l.n);
           const hasVideo = !!videos[l.n]?.url;
           // As cinco primeiras são do catálogo e não saem; as outras o admin criou.
-          const podeRemover = isAdmin && !isProva && l.n > AULAS_BASE.length;
+          const podeRemover = isAdmin && !isProva && l.n > AULAS_FIXAS;
           return (
             <Fragment key={l.n}>
             {isProva && botaoAdicionar}

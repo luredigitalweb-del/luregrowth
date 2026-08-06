@@ -10,8 +10,10 @@ import {
   sections,
   moduleSlug,
   useLoadCourseProgress,
+  useLessonTotals,
   type Module,
 } from "./index";
+import { AULAS_FIXAS } from "@/lib/aulas";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
@@ -40,26 +42,38 @@ function MeusCursosPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { session } = useAuth();
   // Progresso real do aluno (aulas concluidas no banco), nunca dado de demo.
-  const courseProgress = useLoadCourseProgress(session?.user?.id);
+  // O total vem de `lesson_videos`, o mesmo divisor que a home usa.
+  const lessonTotals = useLessonTotals();
+  const courseProgress = useLoadCourseProgress(session?.user?.id, lessonTotals);
   const { tab } = Route.useSearch();
   const navigate = Route.useNavigate();
   const setTab = (t: TabKey) => navigate({ search: { tab: t } });
 
-  // Capas reais salvas no painel (banco), mesmo esquema da Home.
+  // Capa e autor reais salvos no painel (banco), mesmo esquema da Home. Sem o
+  // filtro de capa: o autor tambem vale pra modulo que ainda nao tem imagem.
   const [covers, setCovers] = useState<Record<string, string>>({});
+  const [authors, setAuthors] = useState<Record<string, string>>({});
   useEffect(() => {
     let alive = true;
     supabase
       .from("modules")
-      .select("section_id, title, cover_url")
-      .not("cover_url", "is", null)
+      .select("section_id, title, author, cover_url")
       .then(({ data }) => {
         if (!alive || !data) return;
-        const map: Record<string, string> = {};
-        for (const row of data as { section_id: string; title: string; cover_url: string }[]) {
-          if (row.cover_url) map[coverKey(row.section_id, row.title)] = row.cover_url;
+        const capas: Record<string, string> = {};
+        const nomes: Record<string, string> = {};
+        for (const row of data as {
+          section_id: string;
+          title: string;
+          author: string | null;
+          cover_url: string | null;
+        }[]) {
+          const chave = coverKey(row.section_id, row.title);
+          if (row.cover_url) capas[chave] = row.cover_url;
+          if (row.author?.trim()) nomes[chave] = row.author.trim();
         }
-        setCovers(map);
+        setCovers(capas);
+        setAuthors(nomes);
       });
     return () => {
       alive = false;
@@ -128,7 +142,12 @@ function MeusCursosPage() {
                     <div className="grid grid-cols-2 gap-3.5 lg:hidden">
                       {visible.map((m) =>
                         tab === "certificados" ? (
-                          <CertificateCard key={m.title} m={m} />
+                          <CertificateCard
+                            key={m.title}
+                            m={m}
+                            autor={authors[coverKey(m.sectionId, m.title)] ?? m.author}
+                            totalAulas={lessonTotals[moduleSlug(m.title)] ?? AULAS_FIXAS}
+                          />
                         ) : (
                           <MobileModuleCard key={m.title} m={m} sectionId={m.sectionId} />
                         ),
@@ -139,9 +158,20 @@ function MeusCursosPage() {
                     <div className="hidden gap-5 lg:grid lg:grid-cols-3 xl:grid-cols-4">
                       {visible.map((m) =>
                         tab === "certificados" ? (
-                          <CertificateCard key={m.title} m={m} />
+                          <CertificateCard
+                            key={m.title}
+                            m={m}
+                            autor={authors[coverKey(m.sectionId, m.title)] ?? m.author}
+                            totalAulas={lessonTotals[moduleSlug(m.title)] ?? AULAS_FIXAS}
+                          />
                         ) : (
-                          <CourseCard key={m.title} m={m} covers={covers} />
+                          <CourseCard
+                            key={m.title}
+                            m={m}
+                            covers={covers}
+                            autor={authors[coverKey(m.sectionId, m.title)] ?? m.author}
+                            totalAulas={lessonTotals[moduleSlug(m.title)] ?? AULAS_FIXAS}
+                          />
                         ),
                       )}
                     </div>
@@ -160,7 +190,17 @@ function MeusCursosPage() {
 
 /* ---------------- Cards ---------------- */
 
-function CourseCard({ m, covers }: { m: EnrichedModule; covers: Record<string, string> }) {
+function CourseCard({
+  m,
+  covers,
+  autor,
+  totalAulas,
+}: {
+  m: EnrichedModule;
+  covers: Record<string, string>;
+  autor: string;
+  totalAulas: number;
+}) {
   const done = m.progress >= 100;
   // Capa real do banco > thumb do código. Sem nenhuma das duas, cai no
   // fundo preto com a logo (igual aos cards da home).
@@ -222,9 +262,9 @@ function CourseCard({ m, covers }: { m: EnrichedModule; covers: Record<string, s
         )}
 
         <div className="mt-auto flex items-center justify-between pt-4 text-xs text-muted-foreground">
-          <span className="truncate">{m.author}</span>
+          <span className="truncate">{autor}</span>
           <span className="flex shrink-0 items-center gap-1">
-            <Play className="h-3 w-3" /> {m.lessons} aulas
+            <Play className="h-3 w-3" /> {totalAulas} {totalAulas === 1 ? "aula" : "aulas"}
           </span>
         </div>
       </div>
@@ -240,14 +280,24 @@ function CourseCard({ m, covers }: { m: EnrichedModule; covers: Record<string, s
   );
 }
 
-function CertificateCard({ m }: { m: EnrichedModule }) {
+function CertificateCard({
+  m,
+  autor,
+  totalAulas,
+}: {
+  m: EnrichedModule;
+  autor: string;
+  totalAulas: number;
+}) {
   const download = () =>
     downloadCertificate({
       student: "Alvaro Paiva",
       course: m.title,
       section: m.sectionTitle,
-      author: m.author,
-      lessons: m.lessons,
+      author: autor,
+      // O certificado imprime quantas aulas o aluno fez — tem que ser o numero
+      // de verdade, nao o do catalogo.
+      lessons: totalAulas,
     });
 
   return (

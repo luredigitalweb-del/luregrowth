@@ -36,6 +36,7 @@ import {
   LockOpen,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { AULAS_FIXAS, totalDeAulas } from "@/lib/aulas";
 import { Avatar, initialsOf } from "@/components/avatar";
 import { openSettings } from "@/components/profile-settings-modal";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
@@ -409,6 +410,16 @@ const CoversContext = createContext<Record<string, string>>({});
 const coverKey = (sectionId: string, title: string) => `${sectionId}|${title.trim()}`;
 
 /**
+ * Autor/mentor de cada módulo, do banco, na mesma chave das capas.
+ *
+ * O `author` do catálogo é do protótipo e envelheceu junto com o resto: nos
+ * módulos de Social Selling o código ainda diz "Julia Farias" e o banco já
+ * está em "Julia Lemos". Quem manda é o banco — que é o que o painel
+ * `/admin/modulos` edita no campo "Autor / mentor".
+ */
+const AuthorsContext = createContext<Record<string, string>>({});
+
+/**
  * Cadeado do card, indexado pela mesma chave das capas.
  *
  * `modules.locked` diz se o módulo ainda não está no ar. Para o aluno o card
@@ -454,12 +465,45 @@ export function useCourseProgress() {
   return useContext(ProgressContext);
 }
 
-/** Total de aulas de cada curso, pelo catalogo. */
-const LESSON_TOTALS: Record<string, number> = Object.fromEntries(
-  sections.flatMap((s) => s.modules.map((m) => [moduleSlug(m.title), m.lessons])),
-);
+/**
+ * Quantas aulas cada curso tem de verdade, vindo de `lesson_videos`.
+ *
+ * O `lessons` do catalogo e um numero escrito a mao la no prototipo e nunca
+ * soube das aulas que o admin adicionou depois — por isso nao serve nem pro
+ * card nem pra conta do progresso.
+ */
+const TotalsContext = createContext<Record<string, number>>({});
 
-export function useLoadCourseProgress(userId?: string) {
+export function useLessonTotals() {
+  const [totais, setTotais] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let alive = true;
+    supabase
+      .from("lesson_videos")
+      .select("course_slug, lesson_n")
+      .then(({ data }) => {
+        if (!alive || !data) return;
+        const porCurso: Record<string, number[]> = {};
+        for (const r of data as { course_slug: string; lesson_n: number }[]) {
+          (porCurso[r.course_slug] ??= []).push(r.lesson_n);
+        }
+        setTotais(
+          Object.fromEntries(Object.entries(porCurso).map(([slug, ns]) => [slug, totalDeAulas(ns)])),
+        );
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return totais;
+}
+
+/** Curso sem nenhuma linha no banco ainda mostra as cinco fixas na pagina. */
+export function useCourseLessonCount(slug: string) {
+  return useContext(TotalsContext)[slug] ?? AULAS_FIXAS;
+}
+
+export function useLoadCourseProgress(userId?: string, totals: Record<string, number> = {}) {
   const [map, setMap] = useState<Record<string, number>>({});
   useEffect(() => {
     if (!userId) {
@@ -480,7 +524,9 @@ export function useLoadCourseProgress(userId?: string) {
         }
         const pct: Record<string, number> = {};
         for (const [slug, set] of Object.entries(done)) {
-          const total = LESSON_TOTALS[slug];
+          // Mesmo divisor que o card mostra. Antes vinha do catalogo: quem
+          // terminava as 15 do Anderson dividia por 6 e estourava a barra.
+          const total = totals[slug] ?? AULAS_FIXAS;
           if (total) pct[slug] = Math.min(100, Math.round((set.size / total) * 100));
         }
         setMap(pct);
@@ -488,16 +534,18 @@ export function useLoadCourseProgress(userId?: string) {
     return () => {
       alive = false;
     };
-  }, [userId]);
+  }, [userId, totals]);
   return map;
 }
 
 function Portal() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [covers, setCovers] = useState<Record<string, string>>({});
+  const [authors, setAuthors] = useState<Record<string, string>>({});
   const [locks, setLocks] = useState<Record<string, LockInfo>>({});
   const { session } = useAuth();
-  const courseProgress = useLoadCourseProgress(session?.user?.id);
+  const lessonTotals = useLessonTotals();
+  const courseProgress = useLoadCourseProgress(session?.user?.id, lessonTotals);
 
   useEffect(() => {
     let alive = true;
@@ -505,23 +553,27 @@ function Portal() {
     // capa nenhuma, e é deles que precisamos saber o estado do cadeado.
     supabase
       .from("modules")
-      .select("id, section_id, title, cover_url, locked")
+      .select("id, section_id, title, author, cover_url, locked")
       .then(({ data }) => {
         if (!alive || !data) return;
         const capas: Record<string, string> = {};
+        const nomes: Record<string, string> = {};
         const cadeados: Record<string, LockInfo> = {};
         for (const row of data as {
           id: string;
           section_id: string;
           title: string;
+          author: string | null;
           cover_url: string | null;
           locked: boolean | null;
         }[]) {
           const chave = coverKey(row.section_id, row.title);
           if (row.cover_url) capas[chave] = row.cover_url;
+          if (row.author?.trim()) nomes[chave] = row.author.trim();
           cadeados[chave] = { id: row.id, locked: !!row.locked };
         }
         setCovers(capas);
+        setAuthors(nomes);
         setLocks(cadeados);
       });
     return () => {
@@ -541,7 +593,9 @@ function Portal() {
 
   return (
     <CoversContext.Provider value={covers}>
+      <AuthorsContext.Provider value={authors}>
       <LocksContext.Provider value={lockCtx}>
+      <TotalsContext.Provider value={lessonTotals}>
       <ProgressContext.Provider value={courseProgress}>
         <div className="min-h-screen bg-background text-foreground">
           <div className="flex">
@@ -575,7 +629,9 @@ function Portal() {
           </div>
         </div>
       </ProgressContext.Provider>
+      </TotalsContext.Provider>
       </LocksContext.Provider>
+      </AuthorsContext.Provider>
     </CoversContext.Provider>
   );
 }
@@ -1244,12 +1300,15 @@ function ProfileMenu({ open }: { open: boolean }) {
 }
 
 function ProgressPill() {
-  // Progresso geral real: aulas concluidas / total de aulas do catalogo.
+  // Progresso geral: aulas concluidas / aulas que existem de verdade. Somar o
+  // `lessons` do catalogo dava um total de fantasia (mais de 300 aulas).
   const byCourse = useCourseProgress();
+  const totais = useContext(TotalsContext);
   const mods = sections.flatMap((s) => s.modules);
-  const total = mods.reduce((a, m) => a + m.lessons, 0);
+  const aulasDe = (m: Module) => totais[moduleSlug(m.title)] ?? AULAS_FIXAS;
+  const total = mods.reduce((a, m) => a + aulasDe(m), 0);
   const done = mods.reduce(
-    (a, m) => a + Math.round((m.lessons * (byCourse[moduleSlug(m.title)] ?? 0)) / 100),
+    (a, m) => a + Math.round((aulasDe(m) * (byCourse[moduleSlug(m.title)] ?? 0)) / 100),
     0,
   );
   const pct = total ? Math.round((done / total) * 100) : 0;
@@ -1601,6 +1660,9 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
 
   const slug = moduleSlug(m.title);
   const progress = useCourseProgress()[slug] ?? 0;
+  // Do banco, nao do catalogo: `m.lessons` e `m.author` sao do prototipo.
+  const totalAulas = useCourseLessonCount(slug);
+  const autor = useContext(AuthorsContext)[coverKey(sectionId, m.title)] ?? m.author;
 
   const { isAdmin } = useAuth();
   const { locked, podeTrancar, alternar } = useModuleLock(sectionId, m.title);
@@ -1696,9 +1758,9 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
         {!thumb && <h3 className="font-display text-xl font-bold leading-snug">{m.title}</h3>}
 
         <div className="mt-auto flex items-center justify-between pt-4 text-xs text-muted-foreground">
-          <span className="truncate">{m.author}</span>
+          <span className="truncate">{autor}</span>
           <span className="flex shrink-0 items-center gap-1">
-            <Play className="h-3 w-3" /> {m.lessons} aulas
+            <Play className="h-3 w-3" /> {totalAulas} {totalAulas === 1 ? "aula" : "aulas"}
           </span>
         </div>
       </div>
