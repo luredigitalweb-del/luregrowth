@@ -67,7 +67,20 @@ export type Module = {
   thumb?: string;
   /** Se presente, o card abre a página de módulo do banco (aulas + vídeos editáveis). */
   moduleId?: string;
+  /**
+   * Título da linha em `modules` quando ele não é o mesmo daqui.
+   *
+   * O card acha a sua linha no banco por seção+título. Alguns módulos foram
+   * renomeados no painel e o catálogo ficou com o nome antigo — sem isso eles
+   * não se encontram, e ficam sem capa, sem autor e sem cadeado editáveis.
+   * Apontar a linha resolve sem renomear curso nem mudar URL.
+   */
+  dbTitle?: string;
 };
+
+/** Chave do módulo no banco: `dbTitle` manda, o título daqui é o padrão. */
+export const moduleKey = (sectionId: string, m: Pick<Module, "title" | "dbTitle">) =>
+  coverKey(sectionId, m.dbTitle ?? m.title);
 
 export const sections: { id: string; title: string; subtitle: string; modules: Module[] }[] = [
   {
@@ -120,6 +133,7 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
         accent: "gold",
         thumb: "/social-fundamentos.jpg",
         moduleId: "ebdc9d1a-4369-4ffc-96f0-016ba3f78a85",
+        dbTitle: "Fundamentos",
       },
       {
         title: "Prospecção no LinkedIn",
@@ -129,6 +143,7 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
         tag: "NOVO",
         accent: "gold",
         thumb: "/social-posicionamento.jpg",
+        dbTitle: "Posicionamento e Autoridade",
       },
       {
         title: "Perfil Magnético B2B",
@@ -137,6 +152,7 @@ export const sections: { id: string; title: string; subtitle: string; modules: M
         progress: 35,
         accent: "blue",
         thumb: "/social-prospeccao.jpg",
+        dbTitle: "Prospeção e Relacionamentos",
       },
       {
         title: "Copy para DMs",
@@ -433,15 +449,15 @@ const LocksContext = createContext<{
   setLocked: (key: string, id: string, locked: boolean) => void;
 }>({ byKey: {}, setLocked: () => {} });
 
-function useModuleLock(sectionId: string, title: string) {
+function useModuleLock(chave: string) {
   const { byKey, setLocked } = useContext(LocksContext);
-  const info = byKey[coverKey(sectionId, title)];
+  const info = byKey[chave];
   return {
     locked: info?.locked ?? false,
     /** Sem linha no banco não há o que gravar — some o botão em vez de dar erro. */
     podeTrancar: !!info,
     alternar: () => {
-      if (info) setLocked(coverKey(sectionId, title), info.id, !info.locked);
+      if (info) setLocked(chave, info.id, !info.locked);
     },
   };
 }
@@ -1541,13 +1557,14 @@ export function MobileModuleCard({
   sectionId: string;
   index?: number;
 }) {
+  const chave = moduleKey(sectionId, m);
   const covers = useContext(CoversContext);
-  const thumb = covers[coverKey(sectionId, m.title)] ?? m.thumb;
+  const thumb = covers[chave] ?? m.thumb;
   const slug = moduleSlug(m.title);
   const progress = useCourseProgress()[slug] ?? 0;
 
   const { isAdmin } = useAuth();
-  const { locked, podeTrancar, alternar } = useModuleLock(sectionId, m.title);
+  const { locked, podeTrancar, alternar } = useModuleLock(chave);
   const bloqueado = locked && !isAdmin;
 
   const linkProps = m.moduleId
@@ -1655,17 +1672,18 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
   const glow = "rgba(240, 249, 255, 0.12)";
 
   // Capa salva no painel admin (banco) tem prioridade sobre a imagem fixa do código.
+  const chave = moduleKey(sectionId, m);
   const covers = useContext(CoversContext);
-  const thumb = covers[coverKey(sectionId, m.title)] ?? m.thumb;
+  const thumb = covers[chave] ?? m.thumb;
 
   const slug = moduleSlug(m.title);
   const progress = useCourseProgress()[slug] ?? 0;
   // Do banco, nao do catalogo: `m.lessons` e `m.author` sao do prototipo.
   const totalAulas = useCourseLessonCount(slug);
-  const autor = useContext(AuthorsContext)[coverKey(sectionId, m.title)] ?? m.author;
+  const autor = useContext(AuthorsContext)[chave] ?? m.author;
 
   const { isAdmin } = useAuth();
-  const { locked, podeTrancar, alternar } = useModuleLock(sectionId, m.title);
+  const { locked, podeTrancar, alternar } = useModuleLock(chave);
   // O admin atravessa o cadeado — precisa entrar pra montar o módulo.
   const bloqueado = locked && !isAdmin;
 

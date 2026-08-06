@@ -11,6 +11,7 @@ import {
   moduleSlug,
   useLoadCourseProgress,
   useLessonTotals,
+  moduleKey,
   type Module,
 } from "./index";
 import { AULAS_FIXAS } from "@/lib/aulas";
@@ -145,7 +146,7 @@ function MeusCursosPage() {
                           <CertificateCard
                             key={m.title}
                             m={m}
-                            autor={authors[coverKey(m.sectionId, m.title)] ?? m.author}
+                            autor={authors[moduleKey(m.sectionId, m)] ?? m.author}
                             totalAulas={lessonTotals[moduleSlug(m.title)] ?? AULAS_FIXAS}
                           />
                         ) : (
@@ -161,7 +162,7 @@ function MeusCursosPage() {
                           <CertificateCard
                             key={m.title}
                             m={m}
-                            autor={authors[coverKey(m.sectionId, m.title)] ?? m.author}
+                            autor={authors[moduleKey(m.sectionId, m)] ?? m.author}
                             totalAulas={lessonTotals[moduleSlug(m.title)] ?? AULAS_FIXAS}
                           />
                         ) : (
@@ -169,7 +170,7 @@ function MeusCursosPage() {
                             key={m.title}
                             m={m}
                             covers={covers}
-                            autor={authors[coverKey(m.sectionId, m.title)] ?? m.author}
+                            autor={authors[moduleKey(m.sectionId, m)] ?? m.author}
                             totalAulas={lessonTotals[moduleSlug(m.title)] ?? AULAS_FIXAS}
                           />
                         ),
@@ -204,7 +205,7 @@ function CourseCard({
   const done = m.progress >= 100;
   // Capa real do banco > thumb do código. Sem nenhuma das duas, cai no
   // fundo preto com a logo (igual aos cards da home).
-  const cover = covers[coverKey(m.sectionId, m.title)] ?? m.thumb;
+  const cover = covers[moduleKey(m.sectionId, m)] ?? m.thumb;
   return (
     <Link
       to="/curso/$slug"
