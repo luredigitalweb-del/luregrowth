@@ -7,6 +7,12 @@ import { useAuth } from "@/lib/auth";
 const PUBLIC_PATHS = new Set(["/login"]);
 /** Rotas que exigem papel de administrador. */
 const ADMIN_PREFIXES = ["/admin"];
+/**
+ * Tudo que a conta gratuita pode abrir: a home (que para ela só mostra a
+ * seção gratuita) e a página de módulo. Módulo pago nem chega — o banco não
+ * devolve a linha, e a página cai no "não faz parte do seu acesso".
+ */
+const allowedForFree = (pathname: string) => pathname === "/" || pathname.startsWith("/modulo/");
 
 function Splash() {
   return (
@@ -42,13 +48,14 @@ function BlockedScreen({ onSignOut }: { onSignOut: () => void }) {
 }
 
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { loading, session, profile, isAdmin, signOut } = useAuth();
+  const { loading, session, profile, isAdmin, isFree, signOut } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
 
   const isPublic = PUBLIC_PATHS.has(pathname);
   const needsAdmin = ADMIN_PREFIXES.some((p) => pathname.startsWith(p));
   const blocked = !!session && !!profile && profile.active === false;
+  const outsideFree = !!session && isFree && !isPublic && !allowedForFree(pathname);
 
   useEffect(() => {
     if (loading) return;
@@ -58,8 +65,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
       navigate({ to: "/", replace: true });
     } else if (session && needsAdmin && !isAdmin) {
       navigate({ to: "/", replace: true });
+    } else if (outsideFree) {
+      navigate({ to: "/", replace: true });
     }
-  }, [loading, session, isAdmin, isPublic, needsAdmin, pathname, navigate]);
+  }, [loading, session, isAdmin, isPublic, needsAdmin, outsideFree, pathname, navigate]);
 
   // Enquanto resolve a sessão, ou durante um redirecionamento, mostra o splash
   // para nunca "piscar" conteúdo protegido.
@@ -76,6 +85,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (!session && !isPublic) return <Splash />;
   if (session && pathname === "/login") return <Splash />;
   if (session && needsAdmin && !isAdmin) return <Splash />;
+  if (outsideFree) return <Splash />;
 
   return <>{children}</>;
 }

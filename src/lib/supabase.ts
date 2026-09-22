@@ -19,7 +19,8 @@ export const supabase = createClient(url ?? "", anonKey ?? "", {
   },
 });
 
-export type Role = "admin" | "member";
+/** `free` = conta gratuita: só enxerga a seção gratuita (ver FREE_SECTION_ID). */
+export type Role = "admin" | "member" | "free";
 
 export type Profile = {
   id: string;

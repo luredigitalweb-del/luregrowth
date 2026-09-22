@@ -34,9 +34,12 @@ import {
   X,
   Lock,
   LockOpen,
+  Gift,
+  Plus,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { AULAS_FIXAS, totalDeAulas } from "@/lib/aulas";
+import { FREE_SECTION, FREE_SECTION_ID } from "@/lib/sections";
 import { Avatar, initialsOf } from "@/components/avatar";
 import { openSettings } from "@/components/profile-settings-modal";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
@@ -76,13 +79,27 @@ export type Module = {
    * Apontar a linha resolve sem renomear curso nem mudar URL.
    */
   dbTitle?: string;
+  /**
+   * Aulas contadas em `module_lessons`. Só os módulos que vêm inteiros do
+   * banco (seção gratuita) têm isso; os do catálogo fixo contam pelo
+   * `lesson_videos`, que é onde as aulas deles moram.
+   */
+  aulasDoBanco?: number;
 };
+
+type Section = { id: string; title: string; subtitle: string; modules: Module[] };
+
+/** Contato do comercial: é por onde a conta gratuita pede o acesso completo. */
+const WHATSAPP_SUPORTE =
+  "https://wa.me/5585991112424?text=Ol%C3%A1%2C%20estou%20na%20%C3%81rea%20de%20Membros%20e%20preciso%20de%20ajuda";
+const WHATSAPP_UPGRADE =
+  "https://wa.me/5585991112424?text=Ol%C3%A1%2C%20tenho%20o%20acesso%20gratuito%20da%20LURE%20Growth%20e%20quero%20o%20acesso%20completo";
 
 /** Chave do módulo no banco: `dbTitle` manda, o título daqui é o padrão. */
 export const moduleKey = (sectionId: string, m: Pick<Module, "title" | "dbTitle">) =>
   coverKey(sectionId, m.dbTitle ?? m.title);
 
-export const sections: { id: string; title: string; subtitle: string; modules: Module[] }[] = [
+export const sections: Section[] = [
   {
     id: "intro",
     title: "INTRODUÇÃO",
@@ -566,7 +583,8 @@ function Portal() {
   const [authors, setAuthors] = useState<Record<string, string>>({});
   const [locks, setLocks] = useState<Record<string, LockInfo>>({});
   const [locksCarregados, setLocksCarregados] = useState(false);
-  const { session } = useAuth();
+  const [freeModules, setFreeModules] = useState<Module[]>([]);
+  const { session, isFree } = useAuth();
   const lessonTotals = useLessonTotals();
   const courseProgress = useLoadCourseProgress(session?.user?.id, lessonTotals);
 
@@ -574,14 +592,20 @@ function Portal() {
     let alive = true;
     // Sem filtro de capa: justamente os módulos trancados são os que não têm
     // capa nenhuma, e é deles que precisamos saber o estado do cadeado.
+    // Para a conta gratuita o banco só devolve as linhas da seção gratuita.
     supabase
       .from("modules")
-      .select("id, section_id, title, author, cover_url, locked")
+      .select(
+        "id, section_id, title, author, cover_url, locked, sort_order, created_at, module_lessons(count)",
+      )
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
       .then(({ data }) => {
         if (!alive || !data) return;
         const capas: Record<string, string> = {};
         const nomes: Record<string, string> = {};
         const cadeados: Record<string, LockInfo> = {};
+        const gratis: Module[] = [];
         for (const row of data as {
           id: string;
           section_id: string;
@@ -589,21 +613,43 @@ function Portal() {
           author: string | null;
           cover_url: string | null;
           locked: boolean | null;
+          module_lessons: { count: number }[] | null;
         }[]) {
           const chave = coverKey(row.section_id, row.title);
           if (row.cover_url) capas[chave] = row.cover_url;
           if (row.author?.trim()) nomes[chave] = row.author.trim();
           cadeados[chave] = { id: row.id, locked: !!row.locked };
+          if (row.section_id === FREE_SECTION_ID) {
+            const aulas = row.module_lessons?.[0]?.count ?? 0;
+            gratis.push({
+              title: row.title,
+              author: row.author?.trim() || "Time LURE",
+              lessons: aulas,
+              aulasDoBanco: aulas,
+              progress: 0,
+              thumb: row.cover_url ?? undefined,
+              moduleId: row.id,
+            });
+          }
         }
         setCovers(capas);
         setAuthors(nomes);
         setLocks(cadeados);
+        setFreeModules(gratis);
         setLocksCarregados(true);
       });
     return () => {
       alive = false;
     };
   }, []);
+
+  // A seção gratuita abre a home pra todo mundo. A conta gratuita não vê
+  // mais nada — as outras seções nem são desenhadas.
+  const catalogo = useMemo<{ section: Section; free: boolean }[]>(() => {
+    const gratis = { section: { ...FREE_SECTION, modules: freeModules }, free: true };
+    if (isFree) return [gratis];
+    return [gratis, ...sections.map((section) => ({ section, free: false }))];
+  }, [freeModules, isFree]);
 
   // Destrava na tela primeiro e grava depois: o admin vê o efeito no clique.
   // Se o banco recusar (RLS, rede), o cadeado volta pro lugar.
@@ -645,8 +691,8 @@ function Portal() {
                 </div>
                 <div className="mx-auto max-w-[1400px] px-4 md:px-10">
                   {/* Catálogo único da home (com as fotos das calls de vendas) */}
-                  {sections.map((s) => (
-                    <SectionRow key={s.id} section={s} />
+                  {catalogo.map(({ section, free }) => (
+                    <SectionRow key={section.id} section={section} free={free} />
                   ))}
                 </div>
               </main>
@@ -722,7 +768,7 @@ export function MobileTopBar() {
 
 /** Gaveta lateral do mobile — abre no botão de menu da barra de topo. */
 function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { profile, session, isAdmin } = useAuth();
+  const { profile, session, isAdmin, isFree, roleLabel } = useAuth();
   const navigate = useNavigate();
 
   // Trava o scroll do fundo enquanto a gaveta está aberta.
@@ -735,13 +781,15 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     };
   }, [open]);
 
-  const links = [
+  const todos = [
     { icon: House, label: "Início", to: "/" },
     { icon: BookOpen, label: "Meus cursos", to: "/meus-cursos" },
     { icon: Gauge, label: "Diagnóstico", to: "/diagnostico" },
     { icon: Users, label: "Comunidade", to: "/comunidade" },
     { icon: ScrollText, label: "Certificados", to: "/meus-cursos" },
   ] as const;
+  // O resto do menu levaria a conta gratuita pra telas que ela não abre.
+  const links = isFree ? todos.filter((l) => l.to === "/") : todos;
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -800,9 +848,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             <div className="truncate text-sm font-semibold">
               {profile?.full_name || "Aluno LURE"}
             </div>
-            <div className="truncate text-[11px] text-muted-foreground">
-              {isAdmin ? "Administrador" : "Membro"}
-            </div>
+            <div className="truncate text-[11px] text-muted-foreground">{roleLabel}</div>
           </div>
           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
@@ -825,8 +871,19 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
         <div className="mx-3 my-4 h-px bg-border/50" />
 
         <div className="flex flex-col gap-1 px-3">
+          {isFree && (
+            <a
+              href={WHATSAPP_UPGRADE}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onClose}
+              className="flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-semibold text-primary transition active:bg-primary/10"
+            >
+              <Crown className="h-5 w-5" strokeWidth={1.6} /> Quero o acesso completo
+            </a>
+          )}
           <a
-            href="https://wa.me/5585991112424?text=Ol%C3%A1%2C%20estou%20na%20%C3%81rea%20de%20Membros%20e%20preciso%20de%20ajuda"
+            href={WHATSAPP_SUPORTE}
             target="_blank"
             rel="noopener noreferrer"
             onClick={onClose}
@@ -871,6 +928,9 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
+/** Âncora da seção gratuita — o botão do banner leva a conta gratuita até ela. */
+const FREE_ANCHOR = "secao-gratuita";
+
 /** Banner do mobile: um unico destaque fixo com o video de boas-vindas. */
 const MOBILE_HERO = {
   eyebrow: "Bem-vindo ao",
@@ -913,6 +973,20 @@ function MobileHero() {
       window.removeEventListener("load", tocar);
     };
   }, []);
+
+  const { isFree } = useAuth();
+  const ctaClass =
+    "group relative mt-4 inline-flex w-fit items-center gap-2 overflow-hidden rounded-full gradient-blue px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_10px_26px_-10px_var(--nav)] transition active:scale-95";
+  const ctaInner = (
+    <>
+      <span
+        className="diag-sweep pointer-events-none absolute inset-y-0 -left-6 w-12 bg-white/30 blur-md"
+        aria-hidden
+      />
+      <span className="relative">{MOBILE_HERO.cta}</span>
+      <ArrowRight className="relative h-3.5 w-3.5" />
+    </>
+  );
 
   return (
     <section className="relative overflow-hidden">
@@ -965,24 +1039,26 @@ function MobileHero() {
             </p>
           ))}
         </div>
-        <Link
-          to={MOBILE_HERO.to}
-          search={{ tab: "andamento" as const }}
-          className="group relative mt-4 inline-flex w-fit items-center gap-2 overflow-hidden rounded-full gradient-blue px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_10px_26px_-10px_var(--nav)] transition active:scale-95"
-        >
-          <span
-            className="diag-sweep pointer-events-none absolute inset-y-0 -left-6 w-12 bg-white/30 blur-md"
-            aria-hidden
-          />
-          <span className="relative">{MOBILE_HERO.cta}</span>
-          <ArrowRight className="relative h-3.5 w-3.5" />
-        </Link>
+        {/* A conta gratuita não abre /meus-cursos: o botão desce até a seção dela. */}
+        {isFree ? (
+          <a href={`#${FREE_ANCHOR}`} className={ctaClass}>
+            {ctaInner}
+          </a>
+        ) : (
+          <Link to={MOBILE_HERO.to} search={{ tab: "andamento" as const }} className={ctaClass}>
+            {ctaInner}
+          </Link>
+        )}
       </div>
     </section>
   );
 }
 
 export function MobileTabBar({ current = "/" }: { current?: string }) {
+  const { isFree } = useAuth();
+  // Uma aba só ("Início") não é navegação — pra conta gratuita a barra some.
+  if (isFree) return null;
+
   const items = [
     { icon: House, label: "Início", to: "/" },
     { icon: BookOpen, label: "Cursos", to: "/meus-cursos" },
@@ -1029,18 +1105,16 @@ export function Sidebar({
   onToggle: () => void;
   current?: string;
 }) {
-  const primary = [
+  const { isFree } = useAuth();
+  const todos = [
     { icon: House, label: "Início", to: "/" },
     { icon: BookOpen, label: "Meus cursos", to: "/meus-cursos" },
     { icon: Gauge, label: "Diagnóstico", to: "/diagnostico" },
     { icon: ScrollText, label: "Certificados", to: "/meus-cursos" },
   ];
+  const primary = isFree ? todos.filter((it) => it.to === "/") : todos;
   const secondary = [
-    {
-      icon: Headphones,
-      label: "Suporte",
-      href: "https://wa.me/5585991112424?text=Ol%C3%A1%2C%20estou%20na%20%C3%81rea%20de%20Membros%20e%20preciso%20de%20ajuda",
-    },
+    { icon: Headphones, label: "Suporte", href: WHATSAPP_SUPORTE },
     { icon: Settings, label: "Configurações", onClick: openSettings },
   ];
   const withActive = <T extends { to?: string; href?: string }>(items: T[]) =>
@@ -1089,7 +1163,44 @@ export function Sidebar({
 
       {/* Footer */}
       <div className={`mt-6 flex w-full flex-col ${open ? "gap-3" : "items-center gap-3"}`}>
-        {open ? (
+        {/* Na conta gratuita o card do plano vira o convite pro acesso completo. */}
+        {isFree ? (
+          open ? (
+            <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-surface-elevated/70 p-4">
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent" />
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary/20 text-primary">
+                    <Gift className="h-3.5 w-3.5" />
+                  </div>
+                  <p className="text-xs font-semibold tracking-wide text-primary">Acesso gratuito</p>
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  Libere todas as trilhas, mentorias e a comunidade.
+                </p>
+                <a
+                  href={WHATSAPP_UPGRADE}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary/15 px-3 py-1.5 text-[11px] font-semibold text-primary transition hover:bg-primary/25"
+                >
+                  Quero o acesso completo
+                  <ChevronRight className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          ) : (
+            <a
+              href={WHATSAPP_UPGRADE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="grid h-10 w-10 place-items-center rounded-xl border border-primary/25 bg-primary/10 text-primary transition hover:bg-primary/20"
+              title="Quero o acesso completo"
+            >
+              <Gift className="h-4 w-4" />
+            </a>
+          )
+        ) : open ? (
           <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-surface-elevated/70 p-4">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent" />
             <div className="relative">
@@ -1210,7 +1321,7 @@ export { initialsOf };
 function ProfileMenu({ open }: { open: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const { profile, session, isAdmin, signOut } = useAuth();
+  const { profile, session, isAdmin, roleLabel, signOut } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -1229,7 +1340,6 @@ function ProfileMenu({ open }: { open: boolean }) {
 
   const name = profile?.full_name || profile?.email?.split("@")[0] || "Aluno LURE";
   const email = profile?.email || session?.user?.email || "";
-  const roleLabel = isAdmin ? "Administrador" : "Membro";
 
   const handleSignOut = async () => {
     setMenuOpen(false);
@@ -1332,7 +1442,7 @@ function ProgressPill() {
   const byCourse = useCourseProgress();
   const totais = useContext(TotalsContext);
   const { byKey } = useContext(LocksContext);
-  const { isAdmin } = useAuth();
+  const { isAdmin, isFree } = useAuth();
   // Modulo trancado nao conta pro aluno: ele nem enxerga o card, e entrar no
   // divisor so faria a barra dele nunca chegar ao fim.
   const mods = sections.flatMap((s) =>
@@ -1349,6 +1459,9 @@ function ProgressPill() {
   const r = 15.5;
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
+
+  // A conta é sobre o catálogo pago, que a conta gratuita não enxerga.
+  if (isFree) return null;
 
   return (
     <div
@@ -1411,10 +1524,9 @@ function ProgressPill() {
 }
 
 export function TopBar() {
-  const { profile, session, isAdmin } = useAuth();
+  const { profile, session, roleLabel } = useAuth();
   const name = profile?.full_name || profile?.email?.split("@")[0] || "Aluno LURE";
   const email = profile?.email || session?.user?.email;
-  const roleLabel = isAdmin ? "Administrador" : "Membro";
   return (
     // Sem backdrop-blur aqui de proposito: a barra fica parada no topo enquanto
     // a pagina inteira corre por baixo, entao o navegador teria que reborrar essa
@@ -1479,9 +1591,9 @@ function HeroBanner() {
   );
 }
 
-function SectionRow({ section }: { section: (typeof sections)[number] }) {
+function SectionRow({ section, free = false }: { section: Section; free?: boolean }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const { isAdmin } = useAuth();
+  const { isAdmin, isFree } = useAuth();
   const { byKey, carregado } = useContext(LocksContext);
 
   // Modulo trancado nao existe para o aluno: nem card, nem cadeado, nem "em
@@ -1497,9 +1609,15 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
   // depois esconder seria justamente entregar o que era pra ficar escondido.
   if (!isAdmin && !carregado) return null;
 
+  // Secao gratuita vazia continua de pe para quem depende dela: o admin
+  // precisa de onde comecar a encher, e a conta gratuita nao pode abrir numa
+  // home sem nada. Para o membro pago ela some como qualquer outra. Espera o
+  // banco responder: antes disso "vazia" so quer dizer "ainda nao chegou".
+  const segueVazia = free && carregado && (isAdmin || isFree);
+
   // Secao inteira trancada sai da pagina — titulo sozinho, sem card embaixo,
   // parece pagina quebrada.
-  if (modules.length === 0) return null;
+  if (modules.length === 0 && !segueVazia) return null;
 
   const scrollBy = (dir: 1 | -1) => {
     const el = scrollerRef.current;
@@ -1510,7 +1628,7 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
   };
 
   return (
-    <section className="mt-10 lg:mt-14">
+    <section id={free ? FREE_ANCHOR : undefined} className="mt-10 scroll-mt-24 lg:mt-14">
       <div className="mb-4 flex items-end justify-between gap-3 lg:mb-5">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -1518,30 +1636,80 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
             <span className="truncate text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--nav)]">
               {section.title}
             </span>
+            {/* Só o admin precisa saber que é esta a seção das contas gratuitas. */}
+            {free && isAdmin && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-emerald-400">
+                <Gift className="h-3 w-3" /> Gratuita
+              </span>
+            )}
           </div>
           <h2 className="mt-1.5 font-display text-[17px] font-semibold leading-snug tracking-tight text-foreground lg:text-[19px]">
             {section.subtitle}
           </h2>
         </div>
         <div className="flex shrink-0 items-center gap-4 text-sm text-muted-foreground">
-          <span className="hidden lg:inline">
-            {modules.length} {modules.length === 1 ? "módulo" : "módulos"}
-          </span>
-          <button className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[var(--nav)] transition hover:brightness-125 lg:text-sm lg:text-muted-foreground lg:hover:text-foreground">
-            Ver todos <ChevronRight className="h-4 w-4" />
-          </button>
+          {modules.length > 0 && (
+            <span className="hidden lg:inline">
+              {modules.length} {modules.length === 1 ? "módulo" : "módulos"}
+            </span>
+          )}
+          {free && isAdmin ? (
+            <Link
+              to="/admin/modulos"
+              search={{ secao: section.id }}
+              className="flex items-center gap-1 whitespace-nowrap text-[13px] font-semibold text-[var(--nav)] transition hover:brightness-125 lg:text-sm"
+            >
+              <Plus className="h-4 w-4" /> Módulo
+            </Link>
+          ) : (
+            modules.length > 0 && (
+              <button className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[var(--nav)] transition hover:brightness-125 lg:text-sm lg:text-muted-foreground lg:hover:text-foreground">
+                Ver todos <ChevronRight className="h-4 w-4" />
+              </button>
+            )
+          )}
         </div>
       </div>
+
+      {modules.length === 0 && (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-surface/40 px-6 py-12 text-center">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+            <Gift className="h-5 w-5" />
+          </div>
+          {isAdmin ? (
+            <>
+              <p className="text-sm font-semibold">Nenhum módulo nesta seção ainda</p>
+              <p className="max-w-sm text-xs text-muted-foreground">
+                O que entrar aqui fica aberto para as contas gratuitas.
+              </p>
+              <Link
+                to="/admin/modulos"
+                search={{ secao: section.id }}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-lg gradient-gold px-3.5 py-2 text-xs font-semibold text-primary-foreground transition hover:brightness-110"
+              >
+                <Plus className="h-3.5 w-3.5" /> Adicionar módulo
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold">Suas aulas estão sendo preparadas</p>
+              <p className="max-w-sm text-xs text-muted-foreground">
+                Volte em breve: o conteúdo aparece aqui assim que for liberado.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Mobile: grade de duas colunas, como um app */}
       <div className="grid grid-cols-2 gap-3.5 lg:hidden">
         {modules.map((m, i) => (
-          <MobileModuleCard key={m.title} m={m} sectionId={section.id} index={i} />
+          <MobileModuleCard key={m.moduleId ?? m.title} m={m} sectionId={section.id} index={i} />
         ))}
       </div>
 
-      {/* Desktop: carrossel horizontal */}
-      <div className="relative hidden lg:block">
+      {/* Desktop: carrossel horizontal (vazio, as setas ficariam soltas) */}
+      <div className={`relative hidden ${modules.length > 0 ? "lg:block" : ""}`}>
         <button
           type="button"
           aria-label="Anterior"
@@ -1572,7 +1740,7 @@ function SectionRow({ section }: { section: (typeof sections)[number] }) {
         >
           {modules.map((m) => (
             <div
-              key={m.title}
+              key={m.moduleId ?? m.title}
               data-card
               className="w-[calc(100%-1rem)] shrink-0 snap-start sm:w-[calc(50%-0.625rem)] lg:w-[calc(33.333%-0.833rem)] xl:w-[calc(25%-0.9375rem)]"
             >
@@ -1717,7 +1885,8 @@ function ModuleCard({ m, sectionId }: { m: Module; sectionId: string }) {
   const slug = moduleSlug(m.title);
   const progress = useCourseProgress()[slug] ?? 0;
   // Do banco, nao do catalogo: `m.lessons` e `m.author` sao do prototipo.
-  const totalAulas = useCourseLessonCount(slug);
+  const contagem = useCourseLessonCount(slug);
+  const totalAulas = m.aulasDoBanco ?? contagem;
   const autor = useContext(AuthorsContext)[chave] ?? m.author;
 
   const { isAdmin } = useAuth();

@@ -8,7 +8,9 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { LurePlayer } from "@/components/lure-player";
 import { Comments } from "@/components/comments";
-import { sectionTitle, uploadCover, validateImageFile, type ModuleRow } from "@/lib/sections";
+import {
+  FREE_SECTION, sectionTitle, uploadCover, validateImageFile, type ModuleRow,
+} from "@/lib/sections";
 import { parseYouTubeId } from "@/lib/youtube";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
 
@@ -27,7 +29,7 @@ type Lesson = {
 
 function ModulePage() {
   const { id } = Route.useParams();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isFree } = useAuth();
 
   const [mod, setMod] = useState<ModuleRow | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -105,7 +107,16 @@ function ModulePage() {
     return (
       <div className="grid min-h-screen place-items-center bg-background px-4 text-center">
         <div>
-          <p className="font-display text-xl font-bold">Módulo não encontrado</p>
+          {/* Pra conta gratuita o banco esconde o módulo pago — ele existe,
+              só não é dela. "Não encontrado" soaria como link quebrado. */}
+          <p className="font-display text-xl font-bold">
+            {isFree ? "Este módulo não faz parte do seu acesso" : "Módulo não encontrado"}
+          </p>
+          {isFree && (
+            <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+              Seu acesso gratuito libera a seção {FREE_SECTION.name}.
+            </p>
+          )}
           <Link to="/" className="mt-5 inline-flex rounded-xl gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground">
             Voltar ao início
           </Link>

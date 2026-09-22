@@ -15,6 +15,10 @@ type AuthState = {
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
+  /** Conta gratuita: só a seção gratuita, sem comunidade nem cursos pagos. */
+  isFree: boolean;
+  /** Nome do tipo de conta pra mostrar no perfil. */
+  roleLabel: string;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -135,18 +139,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadProfileFor(session);
   }, [loadProfileFor, session]);
 
-  const value = useMemo<AuthState>(
-    () => ({
+  const value = useMemo<AuthState>(() => {
+    const isAdmin = profile?.role === "admin" && profile?.active === true;
+    const isFree = profile?.role === "free";
+    return {
       session,
       profile,
       loading,
-      isAdmin: profile?.role === "admin" && profile?.active === true,
+      isAdmin,
+      isFree,
+      roleLabel: isAdmin ? "Administrador" : isFree ? "Acesso gratuito" : "Membro",
       signIn,
       signOut,
       refreshProfile,
-    }),
-    [session, profile, loading, signIn, signOut, refreshProfile],
-  );
+    };
+  }, [session, profile, loading, signIn, signOut, refreshProfile]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

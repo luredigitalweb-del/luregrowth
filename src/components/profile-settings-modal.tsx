@@ -45,7 +45,7 @@ export function useSettingsOpen() {
 
 export function ProfileSettingsModal() {
   const open = useSettingsOpen();
-  const { profile, session, isAdmin, refreshProfile } = useAuth();
+  const { profile, session, isAdmin, roleLabel, refreshProfile } = useAuth();
 
   const [name, setName] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -222,7 +222,7 @@ export function ProfileSettingsModal() {
             {/* Badge de papel */}
             <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary">
               {isAdmin ? <Crown className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-              {isAdmin ? "Administrador" : "Membro"}
+              {roleLabel}
             </span>
           </div>
 

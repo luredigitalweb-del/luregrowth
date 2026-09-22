@@ -2,23 +2,29 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronLeft, LayoutGrid, Plus, Loader2, Trash2, Pencil, Youtube,
-  ImagePlus, X, CheckCircle2, Video,
+  ImagePlus, X, CheckCircle2, Video, ListVideo, Gift,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import {
-  SECTIONS, sectionTitle, uploadCover, validateImageFile, type ModuleRow,
+  SECTIONS, FREE_SECTION_ID, sectionTitle, uploadCover, validateImageFile, type ModuleRow,
 } from "@/lib/sections";
 import { parseYouTubeId } from "@/lib/youtube";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
 
 export const Route = createFileRoute("/admin_/modulos")({
   head: () => ({ meta: [{ title: "Módulos — LURE Growth" }] }),
+  // `?secao=` já abre o formulário na seção certa — é o que o botão
+  // "+ Módulo" da seção gratuita, lá na home, manda.
+  validateSearch: (s: Record<string, unknown>): { secao?: string } => ({
+    secao: SECTIONS.some((x) => x.id === s.secao) ? (s.secao as string) : undefined,
+  }),
   component: ModulesAdminPage,
 });
 
 function ModulesAdminPage() {
   const { session, isAdmin } = useAuth();
+  const { secao } = Route.useSearch();
   const [modules, setModules] = useState<ModuleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ModuleRow | null>(null);
@@ -86,6 +92,7 @@ function ModulesAdminPage() {
             <ModuleForm
               key={editing?.id ?? "new"}
               editing={editing}
+              defaultSection={secao}
               userId={session?.user?.id}
               isAdmin={isAdmin}
               onCancel={() => setEditing(null)}
@@ -123,8 +130,13 @@ function ModulesAdminPage() {
               <div className="divide-y divide-border">
                 {grouped.map((g) => (
                   <div key={g.section.id} className="px-4 py-4">
-                    <div className="px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70">
+                    <div className="flex items-center gap-2 px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70">
                       {g.section.title}
+                      {g.section.id === FREE_SECTION_ID && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9.5px] tracking-wider text-emerald-400">
+                          <Gift className="h-3 w-3" /> Gratuita
+                        </span>
+                      )}
                     </div>
                     <ul className="space-y-1.5">
                       {g.items.map((m) => (
@@ -179,6 +191,15 @@ function ModuleRowItem({ m, onEdit, onChanged }: { m: ModuleRow; onEdit: () => v
           {m.author && <span className="truncate">· {m.author}</span>}
         </div>
       </div>
+      {/* As aulas do módulo são montadas na página dele ("Editar módulo"). */}
+      <Link
+        to="/modulo/$id"
+        params={{ id: m.id }}
+        className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+        title="Abrir e montar as aulas"
+      >
+        <ListVideo className="h-3.5 w-3.5" />
+      </Link>
       <button onClick={onEdit} className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground" title="Editar">
         <Pencil className="h-3.5 w-3.5" />
       </button>
@@ -190,16 +211,19 @@ function ModuleRowItem({ m, onEdit, onChanged }: { m: ModuleRow; onEdit: () => v
 }
 
 function ModuleForm({
-  editing, userId, isAdmin, onSaved, onCancel,
+  editing, defaultSection, userId, isAdmin, onSaved, onCancel,
 }: {
   editing: ModuleRow | null;
+  defaultSection?: string;
   userId?: string;
   isAdmin: boolean;
   onSaved: () => void;
   onCancel: () => void;
 }) {
   const isEdit = !!editing;
-  const [sectionId, setSectionId] = useState(editing?.section_id ?? SECTIONS[0].id);
+  const [sectionId, setSectionId] = useState(
+    editing?.section_id ?? defaultSection ?? SECTIONS[0].id,
+  );
   const [title, setTitle] = useState(editing?.title ?? "");
   const [author, setAuthor] = useState(editing?.author ?? "");
   const [youtubeUrl, setYoutubeUrl] = useState(editing?.youtube_url ?? "");
@@ -268,6 +292,18 @@ function ModuleForm({
         return setMsg({ type: "err", text: error?.message ?? "Falha ao criar." });
       }
       moduleId = (data as { id: string }).id;
+
+      // A página do módulo toca as aulas de `module_lessons`, não o link do
+      // módulo. Sem virar a primeira aula, o vídeo colado aqui ficava salvo e
+      // a página abria em "Vídeo em breve".
+      if (payload.youtube_url) {
+        await supabase.from("module_lessons").insert({
+          module_id: moduleId,
+          position: 1,
+          title: "Aula 1",
+          youtube_url: payload.youtube_url,
+        });
+      }
     }
 
     // Envia a capa (se escolhida) e salva a URL.
@@ -397,9 +433,16 @@ function ModuleForm({
             className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm outline-none transition focus:border-primary/50"
           >
             {SECTIONS.map((s) => (
-              <option key={s.id} value={s.id}>{s.title}</option>
+              <option key={s.id} value={s.id}>
+                {s.id === FREE_SECTION_ID ? `${s.title} (gratuita)` : s.title}
+              </option>
             ))}
           </select>
+          {sectionId === FREE_SECTION_ID && (
+            <p className="mt-1 text-[11px] text-emerald-400">
+              Aparece na home e fica aberto para as contas gratuitas.
+            </p>
+          )}
         </Field>
 
         <Field label="Título">

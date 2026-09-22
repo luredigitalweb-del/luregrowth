@@ -17,9 +17,11 @@ import {
   Mail,
   Lock,
   User,
+  Gift,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase, type Profile, type Role } from "@/lib/supabase";
+import { FREE_SECTION } from "@/lib/sections";
 import { Avatar, uploadAvatar, validateAvatarFile } from "@/components/avatar";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
 
@@ -91,7 +93,7 @@ function AdminPage() {
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             Crie contas para novos membros com e-mail e senha, e libere ou bloqueie o acesso quando
-            quiser.
+            quiser. Conta gratuita só vê a seção {FREE_SECTION.name}.
           </p>
         </div>
 
@@ -191,8 +193,30 @@ function CreateUserCard({ onCreated }: { onCreated: () => void }) {
       return;
     }
 
+    const created = (data as { user?: { id?: string; role?: string } })?.user;
+    const newId = created?.id;
+
+    // A Edge Function só sabe criar admin ou membro — qualquer outro papel
+    // ela devolve como membro. A conta gratuita nasce membro e é rebaixada
+    // aqui na sequência, antes de o admin passar a senha pra alguém.
+    if (role === "free" && newId && created?.role !== "free") {
+      const { error: roleErr } = await supabase
+        .from("profiles")
+        .update({ role: "free" })
+        .eq("id", newId);
+      if (roleErr) {
+        setLoading(false);
+        setMsg({
+          type: "err",
+          text: `A conta de ${email} foi criada, mas ficou com acesso completo (${roleErr.message}). Clique em "Mudar para gratuito" na lista antes de passar a senha.`,
+        });
+        reset();
+        onCreated();
+        return;
+      }
+    }
+
     // Se o admin escolheu uma foto, envia agora usando o id recém-criado.
-    const newId = (data as { user?: { id?: string } })?.user?.id;
     if (photo && newId) {
       try {
         const url = await uploadAvatar(photo, newId);
@@ -213,7 +237,10 @@ function CreateUserCard({ onCreated }: { onCreated: () => void }) {
     setLoading(false);
     setMsg({
       type: "ok",
-      text: `Conta criada para ${email}. Já pode entrar com a senha definida.`,
+      text:
+        role === "free"
+          ? `Conta gratuita criada para ${email}. Ela só vê a seção ${FREE_SECTION.name}.`
+          : `Conta criada para ${email}. Já pode entrar com a senha definida.`,
     });
     reset();
     onCreated();
@@ -327,12 +354,18 @@ function CreateUserCard({ onCreated }: { onCreated: () => void }) {
           </IconInput>
         </Field>
         <Field label="Tipo de conta">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <RoleOption
               active={role === "member"}
               onClick={() => setRole("member")}
               icon={<Users className="h-4 w-4" />}
               label="Membro"
+            />
+            <RoleOption
+              active={role === "free"}
+              onClick={() => setRole("free")}
+              icon={<Gift className="h-4 w-4" />}
+              label="Gratuito"
             />
             <RoleOption
               active={role === "admin"}
@@ -341,6 +374,12 @@ function CreateUserCard({ onCreated }: { onCreated: () => void }) {
               label="Admin"
             />
           </div>
+          {role === "free" && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Só vê a seção <b className="text-foreground">{FREE_SECTION.name}</b>. Sem comunidade e
+              sem os cursos pagos.
+            </p>
+          )}
         </Field>
 
         {msg && (
@@ -408,6 +447,23 @@ function UsersCard({
     onChanged();
   };
 
+  // Gratuito ⇄ completo. Rebaixar tira acesso de quem já paga, então pede
+  // confirmação; liberar o completo vai direto.
+  const togglePlan = async (u: Profile) => {
+    const next: Role = u.role === "free" ? "member" : "free";
+    if (
+      next === "free" &&
+      !window.confirm(
+        `Mudar ${u.full_name || u.email} para gratuito? A conta passa a ver só a seção ${FREE_SECTION.name}.`,
+      )
+    )
+      return;
+    setBusyId(u.id);
+    await supabase.from("profiles").update({ role: next }).eq("id", u.id);
+    setBusyId(null);
+    onChanged();
+  };
+
   const sorted = useMemo(
     () => [...users].sort((a, b) => (a.role === "admin" ? -1 : 1) - (b.role === "admin" ? -1 : 1)),
     [users],
@@ -461,6 +517,11 @@ function UsersCard({
                         <Crown className="h-3 w-3" /> Admin
                       </span>
                     )}
+                    {u.role === "free" && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                        <Gift className="h-3 w-3" /> Gratuito
+                      </span>
+                    )}
                     {isMe && (
                       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
                         você
@@ -468,6 +529,15 @@ function UsersCard({
                     )}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">{u.email}</div>
+                  {u.role !== "admin" && (
+                    <button
+                      onClick={() => togglePlan(u)}
+                      disabled={busyId === u.id}
+                      className="mt-1 text-[11px] font-semibold text-[var(--nav)] transition hover:brightness-125 disabled:opacity-40"
+                    >
+                      {u.role === "free" ? "Liberar acesso completo" : "Mudar para gratuito"}
+                    </button>
+                  )}
                 </div>
 
                 <span
@@ -543,7 +613,7 @@ function RoleOption({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+      className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-sm font-medium transition ${
         active
           ? "border-primary/50 bg-primary/10 text-primary"
           : "border-border bg-surface text-muted-foreground hover:text-foreground"

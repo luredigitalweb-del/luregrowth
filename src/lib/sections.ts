@@ -1,7 +1,26 @@
 import { supabase } from "./supabase";
 
+/**
+ * Seção gratuita — a única que a conta `free` enxerga.
+ *
+ * Diferente das outras, os módulos dela não ficam escritos no código: vêm
+ * inteiros do banco, então o admin enche a seção pelo painel sem depender de
+ * deploy. O banco repete este id em `is_free_section()`, que é quem de fato
+ * tranca o resto — trocar aqui sem trocar lá quebra a trava.
+ */
+export const FREE_SECTION_ID = "criativos";
+
+export const FREE_SECTION = {
+  id: FREE_SECTION_ID,
+  title: "CRIANDO CRIATIVOS QUE CONVERTEM",
+  subtitle: "Aulas gratuitas para criar anúncios que vendem",
+  /** O título em caixa alta é do catálogo; em frase corrida vai este. */
+  name: "Criando Criativos que Convertem",
+};
+
 /** Categorias fixas do catálogo (mesmos ids usados na home). */
 export const SECTIONS: { id: string; title: string; subtitle: string }[] = [
+  FREE_SECTION,
   { id: "intro", title: "INTRODUÇÃO", subtitle: "Comece por aqui — a base do ecossistema LURE" },
   { id: "call", title: "CALL DE VENDAS", subtitle: "Do primeiro contato ao fechamento" },
   { id: "social", title: "SOCIAL SELLING", subtitle: "Prospecção e autoridade nas redes" },
