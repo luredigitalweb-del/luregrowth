@@ -38,7 +38,10 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+// `error` vem como unknown: quem explode não promete ser um Error, e o
+// roteador repassa o que pegou. Só console e relatório usam, e os dois
+// aguentam qualquer coisa.
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
