@@ -12,7 +12,7 @@ import {
   FileText,
   Download,
   Clock,
-  Youtube,
+  Video,
   Pencil,
   Loader2,
   Trash2,
@@ -25,7 +25,7 @@ import {
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import { toYouTubeEmbed } from "@/lib/youtube";
+import { isVideoLink, VIDEO_ERRO, VIDEO_HELP, VIDEO_PLACEHOLDER } from "@/lib/video";
 import { Avatar, initialsOf } from "@/components/avatar";
 import { openSettings } from "@/components/profile-settings-modal";
 import { LurePlayer } from "@/components/lure-player";
@@ -743,7 +743,7 @@ function LessonList({
                     ) : (
                       <>
                         <Clock className="h-3 w-3" /> {fmtDuration(videos[l.n]?.duration) ?? l.duration}
-                        {hasVideo && <Youtube className="ml-1 h-3 w-3 text-red-500" />}
+                        {hasVideo && <Video className="ml-1 h-3 w-3 text-primary" />}
                       </>
                     )}
                   </div>
@@ -806,12 +806,12 @@ function VideoPlayer({
     setError(null);
   }, [url, lessonN]);
 
-  const embed = url ? toYouTubeEmbed(url) : null;
+  const embed = !!url && isVideoLink(url);
 
   const handleSave = async () => {
     setError(null);
-    if (value.trim() && !toYouTubeEmbed(value)) {
-      setError("Link do YouTube inválido. Cole a URL completa do vídeo.");
+    if (value.trim() && !isVideoLink(value)) {
+      setError(VIDEO_ERRO);
       return;
     }
     setSaving(true);
@@ -837,14 +837,15 @@ function VideoPlayer({
             {editing ? (
               <div className="w-full max-w-md rounded-2xl border border-border bg-surface/95 p-5 text-left shadow-2xl backdrop-blur">
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Youtube className="h-4 w-4 text-red-500" /> Link do YouTube — Aula {lessonN}
+                  <Video className="h-4 w-4 text-primary" /> Link do vídeo — Aula {lessonN}
                 </div>
                 <input
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=..."
+                  placeholder={VIDEO_PLACEHOLDER}
                   className="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
                 />
+                <p className="mt-2 text-[11px] text-muted-foreground">{VIDEO_HELP}</p>
                 {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
                 <div className="mt-3 flex items-center justify-end gap-2">
                   <button
@@ -874,7 +875,7 @@ function VideoPlayer({
             ) : (
               <>
                 <div className="grid h-16 w-16 place-items-center rounded-full border border-white/15 bg-white/5">
-                  <Youtube className="h-7 w-7 text-white/60" />
+                  <Video className="h-7 w-7 text-white/60" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white/90">Vídeo em breve</p>
@@ -887,7 +888,7 @@ function VideoPlayer({
                     onClick={() => setEditing(true)}
                     className="mt-1 inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
                   >
-                    <Youtube className="h-4 w-4" /> Adicionar link do YouTube
+                    <Video className="h-4 w-4" /> Adicionar link do vídeo
                   </button>
                 )}
               </>

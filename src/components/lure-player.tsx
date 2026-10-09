@@ -9,7 +9,7 @@ import {
   RotateCcw,
   Loader2,
 } from "lucide-react";
-import { parseYouTubeId } from "@/lib/youtube";
+import { parseVideo, driveEmbedUrl } from "@/lib/video";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -42,20 +42,7 @@ function fmt(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-/**
- * Player de vídeo da LURE. Reproduz um vídeo do YouTube SEM a aparência do
- * YouTube: controles próprios, sem logo/título/relacionados, e uma camada que
- * intercepta cliques/hover para o cliente nunca ir parar no YouTube.
- */
-export function LurePlayer({
-  videoUrl,
-  startAt,
-  className = "",
-  onEnded,
-  onDuration,
-  onPlayingChange,
-  onTime,
-}: {
+type PlayerProps = {
   videoUrl: string;
   /** Retoma a partir deste segundo (onde o aluno parou). */
   startAt?: number;
@@ -67,8 +54,65 @@ export function LurePlayer({
   onPlayingChange?: (playing: boolean) => void;
   /** Tempo atual (segundos) — dispara periodicamente enquanto toca. */
   onTime?: (seconds: number) => void;
-}) {
-  const id = parseYouTubeId(videoUrl);
+};
+
+/**
+ * Player de vídeo da LURE. Toca aula do YouTube ou do Google Drive.
+ *
+ * O caminho do YouTube é o completo: controles próprios, sem
+ * logo/título/relacionados. O Drive não tem API de player, então lá o que dá
+ * pra fazer é esconder a moldura dele — ver <DrivePlayer>.
+ */
+export function LurePlayer(props: PlayerProps) {
+  const fonte = parseVideo(props.videoUrl);
+
+  if (fonte?.kind === "drive") {
+    return <DrivePlayer id={fonte.id} className={props.className ?? ""} />;
+  }
+  return <YouTubePlayer {...props} />;
+}
+
+/**
+ * Vídeo hospedado no Drive.
+ *
+ * O Drive só entrega o `/preview`, um iframe fechado: os controles são dele e
+ * não há como perguntar quanto o aluno assistiu — por isso essas aulas não
+ * contam progresso sozinhas (o aluno marca "concluída" na mão).
+ *
+ * O que dá pra esconder é a faixa de cima, onde o Drive mostra o nome do
+ * arquivo, o menu e o "abrir em nova janela" — que levaria o aluno direto pro
+ * arquivo na nuvem. A tarja come os cliques dessa área, então esses botões
+ * ficam fora de alcance.
+ */
+function DrivePlayer({ id, className }: { id: string; className: string }) {
+  return (
+    <div className={`relative overflow-hidden bg-black ${className}`}>
+      <iframe
+        src={driveEmbedUrl(id)}
+        title="Aula"
+        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+        allowFullScreen
+        className="absolute inset-0 h-full w-full border-0"
+      />
+      <div className="absolute inset-x-0 top-0 z-10 h-14 bg-gradient-to-b from-black via-black/85 to-transparent" />
+      <span className="pointer-events-none absolute bottom-3 right-4 z-10 hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-white/30 sm:inline">
+        LURE Player
+      </span>
+    </div>
+  );
+}
+
+function YouTubePlayer({
+  videoUrl,
+  startAt,
+  className = "",
+  onEnded,
+  onDuration,
+  onPlayingChange,
+  onTime,
+}: PlayerProps) {
+  const fonte = parseVideo(videoUrl);
+  const id = fonte?.kind === "youtube" ? fonte.id : null;
   const hostRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);

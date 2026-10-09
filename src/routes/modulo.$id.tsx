@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  ChevronLeft, Loader2, Pencil, Check, X, Plus, Trash2, Play, Youtube,
+  ChevronLeft, Loader2, Pencil, Check, X, Plus, Trash2, Play, Video,
   ImagePlus, GripVertical, Settings2, ArrowLeft,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -11,7 +11,7 @@ import { Comments } from "@/components/comments";
 import {
   FREE_SECTION, sectionTitle, uploadCover, validateImageFile, type ModuleRow,
 } from "@/lib/sections";
-import { parseYouTubeId } from "@/lib/youtube";
+import { isVideoLink, parseVideo, VIDEO_ERRO, VIDEO_HELP, VIDEO_PLACEHOLDER } from "@/lib/video";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
 
 export const Route = createFileRoute("/modulo/$id")({
@@ -264,8 +264,8 @@ function EmptyPlayer({
   const [err, setErr] = useState<string | null>(null);
 
   const save = () => {
-    if (!url.trim() || !parseYouTubeId(url)) {
-      setErr("Cole um link válido do YouTube.");
+    if (!url.trim() || !isVideoLink(url)) {
+      setErr(VIDEO_ERRO);
       return;
     }
     onSaveLink?.(url.trim());
@@ -276,16 +276,18 @@ function EmptyPlayer({
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#0B152D] to-black px-6 text-center">
       <div className="grid h-16 w-16 place-items-center rounded-full border border-white/10 bg-white/5">
-        <Youtube className="h-7 w-7 text-white/50" />
+        <Video className="h-7 w-7 text-white/50" />
       </div>
       {editMode && onSaveLink ? (
         <div className="w-full max-w-md">
-          <p className="mb-2 text-sm font-semibold text-white/90">Cole o link do YouTube desta aula</p>
+          <p className="mb-2 text-sm font-semibold text-white/90">
+            Cole o link do vídeo desta aula — YouTube ou Google Drive
+          </p>
           <div className="flex gap-2">
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
+              placeholder={VIDEO_PLACEHOLDER}
               className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-primary/60"
             />
             <button onClick={save} className="shrink-0 rounded-lg gradient-gold px-4 py-2 text-sm font-semibold text-primary-foreground">
@@ -293,7 +295,7 @@ function EmptyPlayer({
             </button>
           </div>
           {err && <p className="mt-2 text-xs text-red-400">{err}</p>}
-          <p className="mt-2 text-[11px] text-white/40">Dica: suba o vídeo como “Não listado”. No player não aparece marca do YouTube.</p>
+          <p className="mt-2 text-[11px] text-white/40">{VIDEO_HELP}</p>
         </div>
       ) : (
         <div>
@@ -468,8 +470,9 @@ function LessonRow({
   const [url, setUrl] = useState(lesson.youtube_url ?? "");
   useEffect(() => { setTitle(lesson.title); setUrl(lesson.youtube_url ?? ""); }, [lesson.title, lesson.youtube_url]);
 
+  const fonte = lesson.youtube_url ? parseVideo(lesson.youtube_url) : null;
   const hasVideo = !!lesson.youtube_url;
-  const urlOk = !url.trim() || !!parseYouTubeId(url);
+  const urlOk = !url.trim() || isVideoLink(url);
 
   if (editMode) {
     return (
@@ -489,12 +492,12 @@ function LessonRow({
           </button>
         </div>
         <div className="mt-2 flex items-center gap-2 pl-8">
-          <Youtube className={`h-4 w-4 shrink-0 ${urlOk ? "text-muted-foreground" : "text-red-400"}`} />
+          <Video className={`h-4 w-4 shrink-0 ${urlOk ? "text-muted-foreground" : "text-red-400"}`} />
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onBlur={() => { if (urlOk && url.trim() !== (lesson.youtube_url ?? "")) onUpdate({ youtube_url: url.trim() || null }); }}
-            placeholder="Link do YouTube desta aula"
+            placeholder="Link do YouTube ou do Google Drive"
             className={`min-w-0 flex-1 rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary/50 ${urlOk ? "border-border" : "border-red-500/50"}`}
           />
         </div>
@@ -518,7 +521,11 @@ function LessonRow({
             {index + 1}. {lesson.title}
           </div>
           <div className="mt-0.5 text-xs text-muted-foreground">
-            {hasVideo ? "Vídeo disponível" : "Em breve"}
+            {hasVideo
+              ? fonte?.kind === "drive"
+                ? "Vídeo disponível · Drive"
+                : "Vídeo disponível"
+              : "Em breve"}
           </div>
         </div>
       </button>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  ChevronLeft, LayoutGrid, Plus, Loader2, Trash2, Pencil, Youtube,
+  ChevronLeft, LayoutGrid, Plus, Loader2, Trash2, Pencil,
   ImagePlus, X, CheckCircle2, Video, ListVideo, Gift,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import {
   SECTIONS, FREE_SECTION_ID, sectionTitle, uploadCover, validateImageFile, type ModuleRow,
 } from "@/lib/sections";
-import { parseYouTubeId } from "@/lib/youtube";
+import { isVideoLink, parseVideo, VIDEO_ERRO, VIDEO_HELP, VIDEO_PLACEHOLDER } from "@/lib/video";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
 
 export const Route = createFileRoute("/admin_/modulos")({
@@ -181,11 +181,12 @@ function ModuleRowItem({ m, onEdit, onChanged }: { m: ModuleRow; onEdit: () => v
         <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
           {m.youtube_url ? (
             <span className="inline-flex items-center gap-1 text-emerald-400">
-              <CheckCircle2 className="h-3 w-3" /> com vídeo
+              <CheckCircle2 className="h-3 w-3" />
+              {parseVideo(m.youtube_url)?.kind === "drive" ? "vídeo do Drive" : "com vídeo"}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-amber-400">
-              <Youtube className="h-3 w-3" /> sem vídeo
+              <Video className="h-3 w-3" /> sem vídeo
             </span>
           )}
           {m.author && <span className="truncate">· {m.author}</span>}
@@ -242,7 +243,7 @@ function ModuleForm({
     [preview, cover],
   );
 
-  const ytOk = !youtubeUrl.trim() || !!parseYouTubeId(youtubeUrl);
+  const ytOk = !youtubeUrl.trim() || isVideoLink(youtubeUrl);
 
   const pickCover = (f: File | null) => {
     if (!f) return;
@@ -262,8 +263,8 @@ function ModuleForm({
     e.preventDefault();
     setMsg(null);
     if (!title.trim()) return setMsg({ type: "err", text: "Dê um título ao módulo." });
-    if (youtubeUrl.trim() && !parseYouTubeId(youtubeUrl))
-      return setMsg({ type: "err", text: "Link do YouTube inválido." });
+    if (youtubeUrl.trim() && !isVideoLink(youtubeUrl))
+      return setMsg({ type: "err", text: VIDEO_ERRO });
 
     setSaving(true);
     const payload = {
@@ -463,21 +464,25 @@ function ModuleForm({
           />
         </Field>
 
-        <Field label="Link do YouTube">
+        <Field label="Link do vídeo (YouTube ou Google Drive)">
           <div className="relative">
-            <Youtube className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${ytOk ? "text-muted-foreground" : "text-red-400"}`} />
+            <Video className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${ytOk ? "text-muted-foreground" : "text-red-400"}`} />
             <input
               value={youtubeUrl}
               onChange={(e) => setYoutubeUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
+              placeholder={VIDEO_PLACEHOLDER}
               className={`w-full rounded-xl border bg-surface py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-primary/50 ${
                 ytOk ? "border-border" : "border-red-500/50"
               }`}
             />
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Dica: suba o vídeo como <b>Não listado</b> no YouTube. No site ele aparece sem marca do YouTube.
-          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{VIDEO_HELP}</p>
+          {parseVideo(youtubeUrl)?.kind === "drive" && (
+            <p className="mt-1 text-[11px] text-amber-400">
+              No Drive quem toca é o player do Google: o progresso do aluno não é contado
+              sozinho, ele marca a aula como concluída.
+            </p>
+          )}
         </Field>
 
         <Field label="Descrição (opcional)">
