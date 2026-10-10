@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { LurePlayer } from "@/components/lure-player";
 import { Comments } from "@/components/comments";
 import {
-  FREE_SECTION, sectionTitle, uploadCover, validateImageFile, type ModuleRow,
+  FREE_SECTION, uploadCover, validateImageFile, type ModuleRow,
 } from "@/lib/sections";
 import { isVideoLink, parseVideo, VIDEO_ERRO, VIDEO_HELP, VIDEO_PLACEHOLDER } from "@/lib/video";
 import lureLogo from "@/assets/lure-logo-large.png.asset.json";
@@ -61,7 +61,8 @@ function ModulePage() {
     loadAll();
   }, [loadAll]);
 
-  const active = lessons.find((l) => l.id === activeId) ?? null;
+  const activeIndex = lessons.findIndex((l) => l.id === activeId);
+  const active = lessons[activeIndex] ?? null;
 
   /* ---- ações de admin ---- */
   const saveModule = async (patch: Partial<ModuleRow>) => {
@@ -172,32 +173,32 @@ function ModulePage() {
             )}
           </div>
 
-          {/* Info do módulo */}
+          {/* Info da aula: o módulo vira o sobretítulo e a aula tocando é o título */}
           <div className="border-b border-border px-6 py-8 md:px-10">
-            <div className="lure-rise text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-              {sectionTitle(mod.section_id)}
-            </div>
-
-            <EditableTitle
+            <EditableModuleName
               value={mod.title}
               editMode={editMode}
               onSave={(title) => saveModule({ title })}
             />
 
+            <h1
+              key={active?.id}
+              className="lure-rise mt-2 font-display text-3xl font-bold leading-tight md:text-4xl"
+              style={{ ["--d" as string]: "60ms" }}
+            >
+              {active?.title ?? mod.title}
+            </h1>
+
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
               <EditableAuthor value={mod.author} editMode={editMode} onSave={(author) => saveModule({ author })} />
               <span className="inline-flex items-center gap-1.5">
-                <Play className="h-3.5 w-3.5" /> {lessons.length} {lessons.length === 1 ? "aula" : "aulas"}
+                <Play className="h-3.5 w-3.5" />
+                {active
+                  ? `Aula ${activeIndex + 1} de ${lessons.length}`
+                  : `${lessons.length} ${lessons.length === 1 ? "aula" : "aulas"}`}
               </span>
               {editMode && <CoverButton mod={mod} onSaved={(url) => saveModule({ cover_url: url })} />}
             </div>
-
-            {active && (
-              <p className="mt-6 max-w-3xl text-lg font-medium">
-                <span className="text-muted-foreground">Assistindo agora: </span>
-                {active.title}
-              </p>
-            )}
           </div>
 
           {/* Comentários */}
@@ -309,45 +310,45 @@ function EmptyPlayer({
   );
 }
 
-/* ============================== Título editável ============================== */
+/* ============================== Nome do módulo (editável) ============================== */
 
-function EditableTitle({ value, editMode, onSave }: { value: string; editMode: boolean; onSave: (v: string) => void }) {
+function EditableModuleName({ value, editMode, onSave }: { value: string; editMode: boolean; onSave: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
 
   if (editMode && editing) {
     return (
-      <div className="mt-2 flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <input
           autoFocus
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          className="w-full rounded-lg border border-primary/40 bg-surface px-3 py-2 font-display text-2xl font-bold outline-none focus:border-primary md:text-3xl"
+          className="w-full max-w-md rounded-lg border border-primary/40 bg-surface px-3 py-1.5 text-sm font-semibold outline-none focus:border-primary"
         />
-        <button onClick={() => { onSave(draft.trim() || value); setEditing(false); }} className="rounded-lg gradient-gold p-2 text-primary-foreground" title="Salvar">
-          <Check className="h-5 w-5" />
+        <button onClick={() => { onSave(draft.trim() || value); setEditing(false); }} className="rounded-lg gradient-gold p-1.5 text-primary-foreground" title="Salvar">
+          <Check className="h-4 w-4" />
         </button>
-        <button onClick={() => { setDraft(value); setEditing(false); }} className="rounded-lg border border-border p-2 text-muted-foreground" title="Cancelar">
-          <X className="h-5 w-5" />
+        <button onClick={() => { setDraft(value); setEditing(false); }} className="rounded-lg border border-border p-1.5 text-muted-foreground" title="Cancelar">
+          <X className="h-4 w-4" />
         </button>
       </div>
     );
   }
 
   return (
-    <h1 className="lure-rise group mt-2 flex items-start gap-3 font-display text-3xl font-bold leading-tight md:text-4xl" style={{ ["--d" as string]: "60ms" }}>
+    <div className="lure-rise flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
       {value}
       {editMode && (
         <button
           onClick={() => setEditing(true)}
-          className="mt-1.5 shrink-0 text-muted-foreground/60 transition hover:text-primary"
+          className="shrink-0 text-primary/60 transition hover:text-primary"
           title="Renomear módulo"
         >
-          <Pencil className="h-5 w-5" />
+          <Pencil className="h-3.5 w-3.5" />
         </button>
       )}
-    </h1>
+    </div>
   );
 }
 
